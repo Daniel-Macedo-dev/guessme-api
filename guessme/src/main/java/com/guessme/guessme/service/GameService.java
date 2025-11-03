@@ -36,7 +36,7 @@ public class GameService {
                 .body(BodyInserters.fromValue(requestBody))
                 .retrieve()
                 .bodyToMono(String.class)
-                .map(AIResponse::new) // encapsula a resposta no DTO
+                .map(AIResponse::new)
                 .onErrorResume(WebClientResponseException.class, ex ->
                         Mono.just(new AIResponse("Erro da API OpenAI: " + ex.getResponseBodyAsString()))
                 )
