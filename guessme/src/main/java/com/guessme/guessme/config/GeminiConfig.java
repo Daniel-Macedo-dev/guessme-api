@@ -6,17 +6,20 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.client.WebClient;
 
 @Configuration
-public class OpenAIConfig {
+public class GeminiConfig {
 
-    @Value("${OPENAI_API_KEY}")
-    private String openAiApiKey;
+    @Value("${gemini.api.key}")
+    private String geminiApiKey;
 
     @Bean
-    public WebClient openAiWebClient(WebClient.Builder builder) {
+    public WebClient geminiWebClient(WebClient.Builder builder) {
         return builder
-                .baseUrl("https://api.openai.com/v1")
-                .defaultHeader("Authorization", "Bearer " + openAiApiKey)
+                .baseUrl("https://generativelanguage.googleapis.com/v1beta/models")
                 .defaultHeader("Content-Type", "application/json")
                 .build();
+    }
+
+    public String getGeminiApiKey() {
+        return geminiApiKey;
     }
 }

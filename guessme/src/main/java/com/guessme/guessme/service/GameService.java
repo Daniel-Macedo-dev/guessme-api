@@ -1,7 +1,7 @@
 package com.guessme.guessme.service;
 
 import com.guessme.guessme.dto.AIResponse;
-import org.springframework.beans.factory.annotation.Value;
+import com.guessme.guessme.config.GeminiConfig;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -12,40 +12,33 @@ import reactor.core.publisher.Mono;
 public class GameService {
 
     private final WebClient webClient;
+    private final GeminiConfig geminiConfig;
 
-    public GameService(@Value("${openai.api.key}") String apiKey) {
-        this.webClient = WebClient.builder()
-                .baseUrl("https://api.openai.com/v1/chat/completions")
-                .defaultHeader("Authorization", "Bearer " + apiKey)
-                .defaultHeader("Content-Type", "application/json")
-                .build();
-    }
-
-    private String escapeJson(String text) {
-        return text.replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
-                .replace("\r", "\\r");
+    public GameService(WebClient geminiWebClient, GeminiConfig geminiConfig) {
+        this.webClient = geminiWebClient;
+        this.geminiConfig = geminiConfig;
     }
 
     public Mono<AIResponse> askAI(String question) {
         String requestBody = """
             {
-                "model": "gpt-4o-mini",
-                "messages": [
-                    {"role": "system", "content": "Você é o assistente do jogo GuessMe. Responda de forma curta, divertida e natural."},
-                    {"role": "user", "content": "%s"}
-                ]
+              "contents": [{
+                "role": "user",
+                "parts": [{"text": "%s"}]
+              }]
             }
-        """.formatted(escapeJson(question));
+        """.formatted(question.replace("\"", "\\\""));
+
+        String url = "/gemini-1.5-flash:generateContent?key=" + geminiConfig.getGeminiApiKey();
 
         return webClient.post()
+                .uri(url)
                 .body(BodyInserters.fromValue(requestBody))
                 .retrieve()
                 .bodyToMono(String.class)
                 .map(AIResponse::new)
                 .onErrorResume(WebClientResponseException.class, ex ->
-                        Mono.just(new AIResponse("Erro da API OpenAI: " + ex.getResponseBodyAsString()))
+                        Mono.just(new AIResponse("Erro da API Gemini: " + ex.getResponseBodyAsString()))
                 )
                 .onErrorResume(Exception.class, ex ->
                         Mono.just(new AIResponse("Erro inesperado: " + ex.getMessage()))
