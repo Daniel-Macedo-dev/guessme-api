@@ -13,14 +13,13 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class GameService {
 
-    private final WebClient webClient;
     private final GeminiConfig geminiConfig;
+    private final WebClient geminiWebClient;
 
     public Mono<AIResponse> askAI(String question) {
         String requestBody = """
             {
               "contents": [{
-                "role": "user",
                 "parts": [{"text": "%s"}]
               }]
             }
@@ -28,7 +27,7 @@ public class GameService {
 
         String url = "/gemini-1.5-flash:generateContent?key=" + geminiConfig.getGeminiApiKey();
 
-        return webClient.post()
+        return geminiWebClient.post()
                 .uri(url)
                 .body(BodyInserters.fromValue(requestBody))
                 .retrieve()
