@@ -14,6 +14,7 @@ import reactor.core.publisher.Mono;
 public class GameService {
 
     private final GeminiConfig geminiConfig;
+
     private final WebClient geminiWebClient;
 
     public Mono<AIResponse> askAI(String question) {
