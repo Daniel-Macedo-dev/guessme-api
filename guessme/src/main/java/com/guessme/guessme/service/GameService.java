@@ -19,6 +19,7 @@ public class GameService {
     public Mono<AIResponse> askAI(String question) {
         String requestBody = """
             {
+            
               "contents": [{
                 "parts": [{"text": "%s"}]
               }]
