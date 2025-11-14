@@ -16,10 +16,11 @@ public class GeminiConfig {
     @Bean
     public WebClient geminiWebClient(WebClient.Builder builder) {
         return builder
-                .baseUrl("https://generativelanguage.googleapis.com/v1/models")
+                .baseUrl("https://generativelanguage.googleapis.com/v1")
                 .defaultHeader("Content-Type", "application/json")
                 .build();
     }
+
 
     public String getGeminiApiKey() {
         return geminiApiKey;

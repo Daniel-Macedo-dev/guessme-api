@@ -17,15 +17,18 @@ public class GameService {
     private final WebClient geminiWebClient;
 
     public Mono<AIResponse> askAI(String question) {
+
+        String model = "gemini-2.5-flash";
+        String url = "/models/" + model + ":generateContent?key=" + geminiConfig.getGeminiApiKey();
         String requestBody = """
             {
               "contents": [{
-                "parts": [{"text": "%s"}]
+                "parts": [{
+                  "text": "%s"
+                }]
               }]
             }
         """.formatted(question.replace("\"", "\\\""));
-
-        String url = "/gemini-1.5-flash:generateContent?key=" + geminiConfig.getGeminiApiKey();
 
         return geminiWebClient.post()
                 .uri(url)
