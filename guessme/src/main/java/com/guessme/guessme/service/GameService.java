@@ -39,7 +39,6 @@ public class GameService {
                 .bodyToMono(Map.class)
                 .map(response -> {
                     try {
-
                         List<Map<String, Object>> candidates = (List<Map<String, Object>>) response.get("candidates");
                         Map<String, Object> content = (Map<String, Object>) candidates.get(0).get("content");
                         List<Map<String, Object>> parts = (List<Map<String, Object>>) content.get("parts");
