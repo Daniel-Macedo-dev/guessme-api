@@ -17,7 +17,6 @@ public class GameService {
 
     private final GeminiConfig geminiConfig;
     private final WebClient geminiWebClient;
-
     private String conversationHistory = "";
 
     public Mono<AIResponse> askAI(String question) {
