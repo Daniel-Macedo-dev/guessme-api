@@ -16,6 +16,7 @@ public class CorsConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowCredentials(true);
+
         config.setAllowedOrigins(List.of(
                 "http://localhost:5173",
                 "https://Daniel-Macedo-dev.github.io/GuessMe\n"
