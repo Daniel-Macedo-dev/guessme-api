@@ -3,29 +3,26 @@ package com.guessme.guessme.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.web.filter.CorsFilter;
-
-import java.util.List;
+import org.springframework.web.cors.reactive.CorsWebFilter;
+import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
 @Configuration
 public class CorsConfig {
 
     @Bean
-    public CorsFilter corsFilter() {
-        CorsConfiguration config = new CorsConfiguration();
+    public CorsWebFilter corsWebFilter() {
+        CorsConfiguration cors = new CorsConfiguration();
 
-        config.setAllowCredentials(true);
-        config.setAllowedOrigins(List.of(
-                "http://localhost:5173",
-                "https://Daniel-Macedo-dev.github.io/GuessMe\n"
-        ));
-        config.setAllowedHeaders(List.of("*"));
-        config.setAllowedMethods(List.of("*"));
+        cors.addAllowedOrigin("https://daniel-macedo-dev.github.io/guessme-Frontend");
+        cors.addAllowedOrigin("http://localhost:5173"); // para dev
+        cors.setAllowCredentials(false);
+
+        cors.addAllowedHeader("*");
+        cors.addAllowedMethod("*");
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
+        source.registerCorsConfiguration("/**", cors);
 
-        return new CorsFilter(source);
+        return new CorsWebFilter(source);
     }
 }
