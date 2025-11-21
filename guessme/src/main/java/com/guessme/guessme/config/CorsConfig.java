@@ -15,7 +15,6 @@ public class CorsConfig {
 
         cors.addAllowedOrigin("https://daniel-macedo-dev.github.io/guessme-Frontend");
         cors.addAllowedOrigin("http://localhost:5173");
-
         cors.setAllowCredentials(false);
 
         cors.addAllowedHeader("*");
