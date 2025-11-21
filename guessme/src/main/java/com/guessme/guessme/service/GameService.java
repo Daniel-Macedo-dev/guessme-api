@@ -19,16 +19,20 @@ public class GameService {
     private final WebClient geminiWebClient;
     private String conversationHistory = "";
 
+    public Mono<AIResponse> startGame() {
+        conversationHistory = "";
+        String text = "Ok! Já escolhi um personagem. Pode fazer sua primeira pergunta!";
+        conversationHistory += "\nIA: " + text;
+        return Mono.just(new AIResponse(text));
+    }
     public Mono<AIResponse> askAI(String question) {
-
         conversationHistory += "\nUsuário: " + question;
 
         String finalPrompt =
-                "Você está participando de um jogo de adivinhação. " +
-                        "Use SOMENTE o contexto abaixo para responder. " +
-                        "Se não souber, peça mais informações.\n\n" +
-                        "HISTÓRICO ATUAL:\n" +
-                        conversationHistory +
+                "Você está participando de um jogo de adivinhação.\n" +
+                        "Responda SOMENTE com 'Sim', 'Não' ou 'Talvez', até o jogador acertar.\n" +
+                        "Quando ele acertar, confirme e finalize.\n\n" +
+                        "HISTÓRICO ATUAL:\n" + conversationHistory +
                         "\n\nAgora responda como a IA:";
 
         Map<String, Object> requestBody = Map.of(
@@ -49,17 +53,15 @@ public class GameService {
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(response -> {
-                    try {
-                        List<Map<String, Object>> candidates = (List<Map<String, Object>>) response.get("candidates");
-                        Map<String, Object> content = (Map<String, Object>) candidates.get(0).get("content");
-                        List<Map<String, Object>> parts = (List<Map<String, Object>>) content.get("parts");
-                        String text = parts.get(0).get("text").toString();
-                        conversationHistory += "\nIA: " + text;
 
-                        return new AIResponse(text);
-                    } catch (Exception e) {
-                        return new AIResponse("Erro ao processar resposta da IA.");
-                    }
+                    List<Map<String, Object>> candidates = (List<Map<String, Object>>) response.get("candidates");
+                    Map<String, Object> content = (Map<String, Object>) candidates.get(0).get("content");
+                    List<Map<String, Object>> parts = (List<Map<String, Object>>) content.get("parts");
+                    String text = parts.get(0).get("text").toString();
+
+                    conversationHistory += "\nIA: " + text;
+
+                    return new AIResponse(text);
                 })
                 .onErrorResume(WebClientResponseException.class, ex ->
                         Mono.just(new AIResponse("Erro da API Gemini: " + ex.getResponseBodyAsString()))
@@ -73,3 +75,4 @@ public class GameService {
         conversationHistory = "";
     }
 }
+

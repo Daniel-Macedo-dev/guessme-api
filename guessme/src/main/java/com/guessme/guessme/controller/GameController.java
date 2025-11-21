@@ -15,20 +15,14 @@ public class GameController {
 
     private final GameService gameService;
 
-    @GetMapping(value = "/start", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping("/start")
     public Mono<AIResponse> startGame() {
-        String prompt = """
-            Você é o sistema do jogo "Guess Me".
-            Escolha um personagem famoso (real ou fictício), mas não diga quem é.
-            Responda apenas com "Sim", "Não" ou "Talvez" até o jogador acertar.
-            Quando ele acertar, confirme e encerre.
-            Comece dizendo: "Ok! Já escolhi um personagem. Pode fazer sua primeira pergunta!"
-            """;
-        return gameService.askAI(prompt);
+        return gameService.startGame();
     }
 
-    @PostMapping(value = "/ask", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping("/ask")
     public Mono<AIResponse> askAI(@RequestBody String question) {
         return gameService.askAI(question);
     }
 }
+
