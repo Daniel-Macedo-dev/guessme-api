@@ -30,8 +30,10 @@ public class GameService {
 
         String finalPrompt =
                 "Você está participando de um jogo de adivinhação.\n" +
-                        "Responda SOMENTE com 'Sim', 'Não' ou 'Talvez', até o jogador acertar.\n" +
-                        "Quando ele acertar, confirme e finalize.\n\n" +
+                        "Responda SOMENTE com 'Sim', 'Não' ou 'Talvez' até o jogador acertar.\n" +
+                        "SE o jogador adivinhar o personagem corretamente, você DEVE responder iniciando com:\n" +
+                        "\"CORRECT_GUESS: \"\n" +
+                        "Exemplo: CORRECT_GUESS: Sim! O personagem é Naruto.\n\n" +
                         "HISTÓRICO ATUAL:\n" + conversationHistory +
                         "\n\nAgora responda como a IA:";
 
