@@ -1,6 +1,7 @@
 package com.guessme.guessme.controller;
 
 import com.guessme.guessme.dto.AIResponse;
+import com.guessme.guessme.dto.QuestionDTO;
 import com.guessme.guessme.service.GameService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -21,8 +22,8 @@ public class GameController {
     }
 
     @PostMapping("/ask")
-    public Mono<AIResponse> askAI(@RequestBody String question) {
-        return gameService.askAI(question);
+    public Mono<AIResponse> askAI(@RequestBody QuestionDTO dto) {
+        return gameService.askAI(dto.question());
     }
 }
 
