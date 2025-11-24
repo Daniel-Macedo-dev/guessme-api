@@ -1,4 +1,3 @@
 package com.guessme.guessme.dto;
 
-public record QuestionDTO(String question) {
-}
+public record QuestionDTO(String question) {}

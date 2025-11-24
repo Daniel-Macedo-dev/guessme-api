@@ -2,6 +2,7 @@ package com.guessme.guessme.service;
 
 import com.guessme.guessme.config.GeminiConfig;
 import com.guessme.guessme.dto.AIResponse;
+import com.guessme.guessme.dto.CharacterData;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -17,7 +18,6 @@ public class GameService {
 
     private final GeminiConfig geminiConfig;
     private final WebClient geminiWebClient;
-
     private String conversationHistory = "";
 
     public Mono<AIResponse> startGame() {
@@ -26,7 +26,7 @@ public class GameService {
         String text = "Ok! Já escolhi um personagem. Pode fazer sua primeira pergunta!";
         conversationHistory += "\nIA: " + text;
 
-        return Mono.just(new AIResponse(text, false));
+        return Mono.just(new AIResponse(text, false, null));
     }
 
     public Mono<AIResponse> askAI(String question) {
@@ -35,21 +35,22 @@ public class GameService {
 
         String finalPrompt =
                 """
-                Você está participando de um jogo de adivinhação.
-                Você deve responder SOMENTE com "Sim", "Não" ou "Talvez" até que o jogador acerte o personagem.
+                Você está jogando GuessMe.
+                Você deve responder SOMENTE com "Sim", "Não" ou "Talvez".
 
-                ⚠️ QUANDO O JOGADOR ACERTAR, SIGA EXATAMENTE ESTE FORMATO:
+                ❗QUANDO O JOGADOR ACERTAR, responda EXATAMENTE no formato:
 
-                CORRECT_GUESS: Sim! O personagem é <NOME>.
-                (NADA antes, nada depois, nada além disso.)
+                Sim! O personagem é <NOME>.
+                Obra: <OBRA>
+                Imagem: <URL_DA_IMAGEM>
 
-                Se não for acerto, responda APENAS com "Sim", "Não" ou "Talvez".
+                (Nada além disso)
 
-                Historico atual:
+                Histórico:
                 """ + conversationHistory +
                         """
-        
-                        Agora responda corretamente:
+                        
+                        Agora responda seguindo as regras:
                         """;
 
         Map<String, Object> requestBody = Map.of(
@@ -69,9 +70,9 @@ public class GameService {
                 .bodyToMono(Map.class)
                 .map(this::extractAIResponse)
                 .onErrorResume(WebClientResponseException.class,
-                        ex -> Mono.just(new AIResponse("Erro da API Gemini: " + ex.getResponseBodyAsString(), false)))
+                        ex -> Mono.just(new AIResponse("Erro da API Gemini: " + ex.getResponseBodyAsString(), false, null)))
                 .onErrorResume(Exception.class,
-                        ex -> Mono.just(new AIResponse("Erro inesperado: " + ex.getMessage(), false)));
+                        ex -> Mono.just(new AIResponse("Erro inesperado: " + ex.getMessage(), false, null)));
     }
 
     private AIResponse extractAIResponse(Map<String, Object> response) {
@@ -80,7 +81,7 @@ public class GameService {
                 (List<Map<String, Object>>) response.getOrDefault("candidates", List.of());
 
         if (candidates.isEmpty()) {
-            return new AIResponse("Resposta vazia da IA.", false);
+            return new AIResponse("Resposta vazia da IA.", false, null);
         }
 
         Map<String, Object> content =
@@ -95,12 +96,39 @@ public class GameService {
 
         conversationHistory += "\nIA: " + text;
 
-        boolean venceu = text
-                .toLowerCase()
-                .replace(" ", "")
-                .startsWith("correct_guess:".replace(" ", ""));
+        boolean venceu = text.startsWith("Sim! O personagem é");
 
-        return new AIResponse(text, venceu);
+        if (!venceu) {
+            return new AIResponse(text, false, null);
+        }
+
+        String nome = extrair(text, "Sim! O personagem é", ".");
+        String obra = extrair(text, "Obra:", "\n");
+        String imagem = extrair(text, "Imagem:", "\n");
+
+        CharacterData data = new CharacterData(
+                nome != null ? nome : "",
+                obra != null ? obra : "",
+                imagem != null ? imagem : ""
+        );
+
+        return new AIResponse(text, true, data);
+    }
+
+    private String extrair(String texto, String inicio, String fim) {
+        try {
+            int i = texto.indexOf(inicio);
+            if (i < 0) return null;
+
+            int start = i + inicio.length();
+            int j = texto.indexOf(fim, start);
+
+            if (j < 0) j = texto.length();
+
+            return texto.substring(start, j).trim();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public void resetGame() {
