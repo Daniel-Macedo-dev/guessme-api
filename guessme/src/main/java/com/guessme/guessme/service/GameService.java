@@ -37,19 +37,25 @@ public class GameService {
                 """
                 Você está jogando GuessMe.
                 Você deve responder SOMENTE com "Sim", "Não" ou "Talvez".
-
-                ❗QUANDO O JOGADOR ACERTAR, responda EXATAMENTE no formato:
-
+        
+                ❗QUANDO O JOGADOR ACERTAR, siga EXATAMENTE este formato:
+        
                 Sim! O personagem é <NOME>.
                 Obra: <OBRA>
-                Imagem: <URL_DA_IMAGEM>
-
-                (Nada além disso)
-
+                Imagem: <URL_DA_IMAGEM_GENERADA>
+        
+                REGRAS PARA A IMAGEM:
+                - Gere UMA imagem ULTRA-REALISTA usando o modelo Gemini com o máximo de fidelidade possível.
+                - A imagem deve representar APENAS o personagem, de forma clara e reconhecível.
+                - A imagem deve ter fundo neutro.
+                - Gere a imagem usando a função interna de geração de imagem (não busque na internet).
+                - Retorne a URL direta da imagem gerada.
+                - Não adicione texto, não adicione comentários, não explique nada.
+                
                 Histórico:
                 """ + conversationHistory +
                         """
-                        
+        
                         Agora responda seguindo as regras:
                         """;
 
