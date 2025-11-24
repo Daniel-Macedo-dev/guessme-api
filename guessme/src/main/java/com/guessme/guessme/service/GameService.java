@@ -37,25 +37,26 @@ public class GameService {
                 """
                 Você está jogando GuessMe.
                 Você deve responder SOMENTE com "Sim", "Não" ou "Talvez".
-        
+
                 ❗QUANDO O JOGADOR ACERTAR, siga EXATAMENTE este formato:
-        
+
                 Sim! O personagem é <NOME>.
                 Obra: <OBRA>
                 Imagem: <URL_DA_IMAGEM_GENERADA>
-        
+
                 REGRAS PARA A IMAGEM:
-                - Gere UMA imagem ULTRA-REALISTA usando o modelo Gemini com o máximo de fidelidade possível.
-                - A imagem deve representar APENAS o personagem, de forma clara e reconhecível.
-                - A imagem deve ter fundo neutro.
-                - Gere a imagem usando a função interna de geração de imagem (não busque na internet).
-                - Retorne a URL direta da imagem gerada.
-                - Não adicione texto, não adicione comentários, não explique nada.
+                - Gere UMA imagem ULTRA-REALISTA usando o modelo Gemini.
+                - Proporção obrigatória 3:4.
+                - A imagem deve ser fiel ao visual real do personagem.
+                - Fundo neutro.
+                - Apenas o personagem.
+                - Não coloque texto na imagem.
+                - Retorne apenas a URL direta da imagem gerada.
                 
                 Histórico:
                 """ + conversationHistory +
                         """
-        
+
                         Agora responda seguindo as regras:
                         """;
 
@@ -108,6 +109,7 @@ public class GameService {
             return new AIResponse(text, false, null);
         }
 
+        // Extração limpa
         String nome = extrair(text, "Sim! O personagem é", ".");
         String obra = extrair(text, "Obra:", "\n");
         String imagem = extrair(text, "Imagem:", "\n");
