@@ -22,10 +22,8 @@ public class GameService {
 
     public Mono<AIResponse> startGame() {
         conversationHistory = "";
-
         String text = "Ok! Já escolhi um personagem. Pode fazer sua primeira pergunta!";
         conversationHistory += "\nIA: " + text;
-
         return Mono.just(new AIResponse(text, false, null));
     }
 
@@ -42,29 +40,28 @@ public class GameService {
 
                 Sim! O personagem é <NOME>.
                 Obra: <OBRA>
-                Imagem: <URL_DA_IMAGEM_GENERADA>
+                Imagem: <URL_DA_IMAGEM>
 
                 REGRAS PARA A IMAGEM:
-                - Gere UMA imagem ULTRA-REALISTA usando o modelo Gemini.
-                - Proporção obrigatória 3:4.
-                - A imagem deve ser fiel ao visual real do personagem.
+                - Gere UMA imagem ultra-realista EM FORMATO 3:4.
                 - Fundo neutro.
-                - Apenas o personagem.
-                - Não coloque texto na imagem.
-                - Retorne apenas a URL direta da imagem gerada.
-                
+                - Apenas o personagem, extremamente fiel ao original.
+                - Sem texto na imagem.
+                - Retorne SÓ a URL gerada pelo Gemini.
+                - NÃO EXPLIQUE NADA.
+
                 Histórico:
                 """ + conversationHistory +
                         """
 
-                        Agora responda seguindo as regras:
-                        """;
+                Agora responda seguindo as regras:
+                """;
 
         Map<String, Object> requestBody = Map.of(
                 "contents", List.of(
-                        Map.of(
-                                "parts", List.of(Map.of("text", finalPrompt))
-                        )
+                        Map.of("parts", List.of(
+                                Map.of("text", finalPrompt)
+                        ))
                 )
         );
 
@@ -97,30 +94,28 @@ public class GameService {
         List<Map<String, Object>> parts =
                 (List<Map<String, Object>>) content.getOrDefault("parts", List.of());
 
-        String text = parts.isEmpty()
-                ? "Resposta inválida da IA."
-                : parts.get(0).getOrDefault("text", "").toString().trim();
+        String text =
+                parts.isEmpty() ? "Resposta inválida da IA." : parts.get(0).get("text").toString().trim();
 
         conversationHistory += "\nIA: " + text;
 
-        boolean venceu = text.startsWith("Sim! O personagem é");
+        boolean acertou = text.startsWith("Sim! O personagem é");
 
-        if (!venceu) {
+        if (!acertou) {
             return new AIResponse(text, false, null);
         }
 
-        // Extração limpa
         String nome = extrair(text, "Sim! O personagem é", ".");
         String obra = extrair(text, "Obra:", "\n");
         String imagem = extrair(text, "Imagem:", "\n");
 
-        CharacterData data = new CharacterData(
+        CharacterData cd = new CharacterData(
                 nome != null ? nome : "",
                 obra != null ? obra : "",
                 imagem != null ? imagem : ""
         );
 
-        return new AIResponse(text, true, data);
+        return new AIResponse(text, true, cd);
     }
 
     private String extrair(String texto, String inicio, String fim) {
@@ -130,7 +125,6 @@ public class GameService {
 
             int start = i + inicio.length();
             int j = texto.indexOf(fim, start);
-
             if (j < 0) j = texto.length();
 
             return texto.substring(start, j).trim();
