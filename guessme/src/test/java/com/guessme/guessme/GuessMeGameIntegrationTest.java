@@ -16,23 +16,20 @@ public class GuessMeGameIntegrationTest {
 
     @Test
     void testMotokoVictory() {
-        Mono<AIResponse> startMono = gameService.startGame();
 
-        startMono.subscribe(startResponse -> {
-            System.out.println("IA inicial: " + startResponse.text());
+        AIResponse startResponse = gameService.startGame().block();
+        System.out.println("IA inicial: " + startResponse.text());
+        AIResponse aiResponse = gameService.askAI(
+                "O personagem é Motoko Kusanagi, de Ghost in the Shell?"
+        ).block();
 
-            Mono<AIResponse> askMono = gameService.askAI("O personagem é Motoko Kusanagi?");
-            askMono.subscribe(aiResponse -> {
-                System.out.println("Resposta IA: " + aiResponse.text());
-                if (aiResponse.vitoria()) {
-                    CharacterData winner = aiResponse.dados();
-                    System.out.println("Nome: " + winner.nome());
-                    System.out.println("Obra: " + winner.obra());
-                    System.out.println("Imagem: " + winner.imagem());
-                }
-            });
-        });
-
-        try { Thread.sleep(10000); } catch (InterruptedException e) { e.printStackTrace(); }
+        System.out.println("Resposta IA: " + aiResponse.text());
+        if (aiResponse.vitoria()) {
+            CharacterData c = aiResponse.character();
+            System.out.println("=== RESPOSTA DETECTADA ===");
+            System.out.println("Nome: " + c.name());
+            System.out.println("Obra: " + c.origin());
+            System.out.println("Imagem: " + c.image());
+        }
     }
 }
