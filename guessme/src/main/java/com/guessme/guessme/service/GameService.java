@@ -18,14 +18,13 @@ public class GameService {
 
     private final GeminiConfig geminiConfig;
     private final WebClient geminiWebClient;
+
     private String conversationHistory = "";
 
     public Mono<AIResponse> startGame() {
         conversationHistory = "";
-
         String text = "Ok! Já escolhi um personagem. Pode fazer sua primeira pergunta!";
         conversationHistory += "\nIA: " + text;
-
         return Mono.just(new AIResponse(text, false, null));
     }
 
@@ -37,8 +36,8 @@ public class GameService {
                 """
                 Você está jogando GuessMe.
                 Responda APENAS: "Sim", "Não" ou "Talvez".
-
-                ❗QUANDO O JOGADOR ACERTAR, responda EXATAMENTE assim:
+                
+                ❗SE O JOGADOR ACERTAR, responda EXATAMENTE assim:
 
                 Sim! O personagem é <NOME>.
                 Obra: <OBRA>
@@ -48,22 +47,18 @@ public class GameService {
                 - Gere UMA imagem ultra-realista.
                 - Proporção obrigatória 3:4.
                 - Apenas o personagem, fundo neutro.
-                - Sem texto, sem bordas, sem comentários.
-                - Use APENAS geração nativa do Gemini.
+                - Sem texto, sem bordas.
                 - Retorne somente a URL da imagem gerada.
-                
+
                 Histórico:
                 """ + conversationHistory +
-                        """
-                        
-                        Agora responda seguindo as regras acima.
-                        """;
+                        "\nAgora responda seguindo as regras.";
 
-        Map<String, Object> requestBody = Map.of(
+        Map<String, Object> body = Map.of(
                 "contents", List.of(
-                        Map.of(
-                                "parts", List.of(Map.of("text", finalPrompt))
-                        )
+                        Map.of("parts", List.of(
+                                Map.of("text", finalPrompt)
+                        ))
                 )
         );
 
@@ -71,14 +66,14 @@ public class GameService {
 
         return geminiWebClient.post()
                 .uri(url)
-                .bodyValue(requestBody)
+                .bodyValue(body)
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(this::extractAIResponse)
-                .onErrorResume(WebClientResponseException.class,
-                        ex -> Mono.just(new AIResponse("Erro da API Gemini: " + ex.getResponseBodyAsString(), false, null)))
-                .onErrorResume(Exception.class,
-                        ex -> Mono.just(new AIResponse("Erro inesperado: " + ex.getMessage(), false, null)));
+                .onErrorResume(WebClientResponseException.class, ex ->
+                        Mono.just(new AIResponse("Erro da API Gemini: " + ex.getResponseBodyAsString(), false, null)))
+                .onErrorResume(Exception.class, ex ->
+                        Mono.just(new AIResponse("Erro inesperado: " + ex.getMessage(), false, null)));
     }
 
     private AIResponse extractAIResponse(Map<String, Object> response) {

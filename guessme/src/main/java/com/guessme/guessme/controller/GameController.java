@@ -4,7 +4,6 @@ import com.guessme.guessme.dto.AIResponse;
 import com.guessme.guessme.dto.QuestionDTO;
 import com.guessme.guessme.service.GameService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
@@ -26,4 +25,3 @@ public class GameController {
         return gameService.askAI(dto.question());
     }
 }
-
