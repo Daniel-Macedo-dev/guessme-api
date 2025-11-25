@@ -34,3 +34,7 @@ build/
 
 # Arquivo local com chave da API Gemini
 src/main/resources/gemini.properties
+
+# Arquivo local com chave da API Google
+src/main/resources/google.properties
+
