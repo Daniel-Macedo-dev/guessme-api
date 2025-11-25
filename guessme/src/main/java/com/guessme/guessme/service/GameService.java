@@ -108,7 +108,6 @@ public class GameService {
             return new AIResponse(text, false, null);
         }
 
-        // --- EXTRAÇÃO CORRIGIDA ---
         String nome = extrair(text, "Sim! O personagem é", ".");
         String obra = extrair(text, "Obra:", "\n");
         String imagem = extrair(text, "Imagem:", "\n");
