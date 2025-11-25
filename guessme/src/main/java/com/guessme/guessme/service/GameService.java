@@ -119,6 +119,7 @@ public class GameService {
                 imagem != null ? imagem : ""
         );
 
+
         return new AIResponse("Sim! O personagem é " + nome + ".", true, data);
     }
 
