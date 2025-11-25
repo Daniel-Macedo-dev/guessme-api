@@ -21,30 +21,32 @@ public class ImageSearchService {
     private final WebClient webClient = WebClient.create("https://www.googleapis.com");
 
     public String searchImage(String query) {
-
         try {
-            String url = "/customsearch/v1"
-                    + "?key=" + apiKey
-                    + "&cx=" + cx
-                    + "&searchType=image"
-                    + "&num=1"
-                    + "&q=" + query;
 
-            Map response = webClient.get()
-                    .uri(url)
+            Map<String, Object> response = webClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/customsearch/v1")
+                            .queryParam("key", apiKey)
+                            .queryParam("cx", cx)
+                            .queryParam("searchType", "image")
+                            .queryParam("num", 1)
+                            .queryParam("q", query)
+                            .build()
+                    )
                     .retrieve()
                     .bodyToMono(Map.class)
                     .block();
 
-            if (response == null || !response.containsKey("items")) {
-                return null;
-            }
+            if (response == null) return null;
 
-            List<Map<String, Object>> items = (List<Map<String, Object>>) response.get("items");
+            Object itemsObj = response.get("items");
+            if (!(itemsObj instanceof List<?> items)) return null;
 
             if (items.isEmpty()) return null;
 
-            return items.get(0).get("link").toString();
+            Map first = (Map) items.get(0);
+
+            return first.get("link").toString();
 
         } catch (Exception e) {
             return null;
