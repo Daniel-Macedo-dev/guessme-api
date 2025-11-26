@@ -26,7 +26,6 @@ public class GameService {
         String text = "Ok! Já escolhi um personagem. Pode fazer sua primeira pergunta!";
         conversationHistory += "\nIA: " + text;
         return Mono.just(new AIResponse(text, false, null));
-
     }
 
     public Mono<AIResponse> askAI(String question) {
