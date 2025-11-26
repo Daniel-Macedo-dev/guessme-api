@@ -35,7 +35,6 @@ public class GameService {
         String finalPrompt =
                 """
                 Você está jogando GuessMe.
-                
                 Responda APENAS: "Sim", "Não" ou "Talvez".
                 
                 ❗SE O JOGADOR ACERTAR, responda EXATAMENTE assim:
