@@ -16,6 +16,7 @@ public class ImageSearchService {
     private String apiKey;
 
     @Value("${google.search.cx}")
+
     private String cx;
 
     private final WebClient webClient = WebClient.create("https://www.googleapis.com");
