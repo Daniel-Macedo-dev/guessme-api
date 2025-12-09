@@ -6,8 +6,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsWebFilter;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 
-import java.util.List;
-
 @Configuration
 public class CorsConfig {
 
@@ -15,14 +13,12 @@ public class CorsConfig {
     public CorsWebFilter corsWebFilter() {
 
         CorsConfiguration cors = new CorsConfiguration();
-        cors.setAllowedOriginPatterns(List.of(
-                "https://daniel-macedo-dev.github.io",
-                "https://daniel-macedo-dev.github.io/*",
-                "http://localhost:5173"
-        ));
+        cors.addAllowedOrigin("http://localhost:5173");
 
-        cors.setAllowedMethods(List.of("*"));
-        cors.setAllowedHeaders(List.of("*"));
+        // cors.addAllowedOrigin("https://daniel-macedo-dev.github.io");
+
+        cors.addAllowedHeader("*");
+        cors.addAllowedMethod("*");
         cors.setAllowCredentials(false);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
