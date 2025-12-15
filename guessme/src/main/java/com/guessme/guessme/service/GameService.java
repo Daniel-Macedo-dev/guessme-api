@@ -14,7 +14,6 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-
 public class GameService {
 
     private final GeminiConfig geminiConfig;
