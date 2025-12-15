@@ -17,7 +17,6 @@ import java.util.Map;
 public class GameService {
 
     private final GeminiConfig geminiConfig;
-
     private final WebClient geminiWebClient;
 
     private String conversationHistory = "";
