@@ -32,7 +32,6 @@ public class GameService {
 
         conversationHistory += "\nUsuário: " + question;
 
-
         String finalPrompt =
                 """
                 Você está jogando GuessMe.
