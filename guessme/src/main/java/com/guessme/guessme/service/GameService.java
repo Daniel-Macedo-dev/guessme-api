@@ -18,6 +18,7 @@ public class GameService {
 
     private final GeminiConfig geminiConfig;
     private final WebClient geminiWebClient;
+    private final ImageSearchService imageSearchService;
 
     private String conversationHistory = "";
 
@@ -36,19 +37,11 @@ public class GameService {
                 """
                 Você está jogando GuessMe.
                 Responda APENAS: "Sim", "Não" ou "Talvez".
-                
-                ❗SE O JOGADOR ACERTAR, responda EXATAMENTE assim:
+
+                ❗SE O JOGADOR ACERTAR, responda EXATAMENTE assim (sem texto extra):
 
                 Sim! O personagem é <NOME>.
                 Obra: <OBRA>
-                Imagem: <URL>
-
-                REGRAS DA IMAGEM:
-                - Gere UMA imagem ultra-realista.
-                - Proporção obrigatória 3:4.
-                - Apenas o personagem, fundo neutro.
-                - Sem texto, sem bordas.
-                - Retorne somente a URL da imagem gerada.
 
                 Histórico:
                 """ + conversationHistory +
@@ -105,15 +98,20 @@ public class GameService {
 
         String nome = extrair(text, "Sim! O personagem é", ".");
         String obra = extrair(text, "Obra:", "\n");
-        String imagem = extrair(text, "Imagem:", "\n");
 
-        CharacterData data = new CharacterData(
-                nome != null ? nome : "",
-                obra != null ? obra : "",
-                imagem != null ? imagem : ""
-        );
+        String nomeOk = (nome != null) ? nome : "";
+        String obraOk = (obra != null) ? obra : "";
 
-        return new AIResponse("Sim! O personagem é " + nome + ".", true, data);
+        String query = (nomeOk + " " + obraOk + " character official portrait").trim();
+        String imagemUrl = imageSearchService.searchImage(query);
+
+        if (imagemUrl == null) {
+            imagemUrl = "";
+        }
+
+        CharacterData data = new CharacterData(nomeOk, obraOk, imagemUrl);
+
+        return new AIResponse("Sim! O personagem é " + nomeOk + ".", true, data);
     }
 
     private String extrair(String texto, String inicio, String fim) {
