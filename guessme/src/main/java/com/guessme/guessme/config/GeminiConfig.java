@@ -18,6 +18,7 @@ public class GeminiConfig {
         return WebClient.builder()
                 .baseUrl("https://generativelanguage.googleapis.com/v1")
                 .defaultHeader("Content-Type", "application/json")
+                .defaultHeader("x-goog-api-key", geminiApiKey)
                 .build();
     }
 

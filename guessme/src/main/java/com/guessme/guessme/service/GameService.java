@@ -31,6 +31,15 @@ public class GameService {
 
     public Mono<AIResponse> askAI(String question) {
 
+        String key = geminiConfig.getGeminiApiKey();
+        if (key == null || key.isBlank()) {
+            return Mono.just(new AIResponse(
+                    "Config inválida: gemini.api.key não foi carregada (gemini.properties).",
+                    false,
+                    null
+            ));
+        }
+
         conversationHistory += "\nUsuário: " + question;
 
         String finalPrompt =
@@ -55,7 +64,7 @@ public class GameService {
                 )
         );
 
-        String url = "/models/gemini-2.5-flash:generateContent?key=" + geminiConfig.getGeminiApiKey();
+        String url = "/models/gemini-2.5-flash:generateContent";
 
         return geminiWebClient.post()
                 .uri(url)
@@ -63,8 +72,18 @@ public class GameService {
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(this::extractAIResponse)
-                .onErrorResume(WebClientResponseException.class, ex ->
-                        Mono.just(new AIResponse("Erro da API Gemini: " + ex.getResponseBodyAsString(), false, null)))
+                .onErrorResume(WebClientResponseException.class, ex -> {
+                    String bodyStr = ex.getResponseBodyAsString();
+                    String details = (bodyStr != null && !bodyStr.isBlank())
+                            ? bodyStr
+                            : ex.getMessage();
+
+                    return Mono.just(new AIResponse(
+                            "Erro da API Gemini (" + ex.getStatusCode().value() + "): " + details,
+                            false,
+                            null
+                    ));
+                })
                 .onErrorResume(Exception.class, ex ->
                         Mono.just(new AIResponse("Erro inesperado: " + ex.getMessage(), false, null)));
     }
