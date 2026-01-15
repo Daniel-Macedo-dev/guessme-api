@@ -2,67 +2,90 @@ package com.guessme.guessme.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class ImageSearchService {
 
-    @Value("${google.api.key}")
-    private String apiKey;
+    private final WebClient webClient;
 
-    @Value("${google.search.cx}")
-    private String cx;
+    private final String apiKey;
+    private final String cx;
 
-    private final WebClient webClient = WebClient.create("https://www.googleapis.com");
+    private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
+            new ParameterizedTypeReference<>() {};
 
-    private static final List<String> ALLOWED_DOMAINS = List.of(
+    private static final List<String> TRUSTED_DOMAINS = List.of(
             "wikipedia.org",
             "wikimedia.org",
             "fandom.com",
             "imdb.com"
     );
 
-    public String searchImage(String query) {
-        String safeQuery = query + " official character portrait";
+    public ImageSearchService(
+            WebClient.Builder webClientBuilder,
+            @Value("${google.api.key}") String apiKey,
+            @Value("${google.search.cx}") String cx
+    ) {
+        this.webClient = webClientBuilder
+                .baseUrl("https://www.googleapis.com")
+                .build();
+        this.apiKey = apiKey;
+        this.cx = cx;
+    }
 
-        for (String domain : ALLOWED_DOMAINS) {
-            String link = searchInDomain(safeQuery, domain);
-            if (isAcceptable(link, domain)) return link;
+    public String searchImage(String baseQuery) {
+
+        List<String> queries = List.of(
+                baseQuery + " official character portrait",
+                baseQuery + " character",
+                baseQuery + " movie character",
+                baseQuery
+        );
+
+        for (String query : queries) {
+            for (String domain : TRUSTED_DOMAINS) {
+                String link = search(query, domain);
+                if (isValid(link, domain)) return link;
+            }
         }
 
-        String link = searchInDomain(safeQuery, null);
-        if (isAcceptable(link, null)) return link;
+        for (String query : queries) {
+            String link = search(query, null);
+            if (isValid(link, null)) return link;
+        }
 
         return null;
     }
 
-    private String searchInDomain(String q, String domain) {
+    private String search(String query, String domain) {
         try {
             Map<String, Object> response = webClient.get()
                     .uri(uriBuilder -> {
-                        var b = uriBuilder
+                        var builder = uriBuilder
                                 .path("/customsearch/v1")
                                 .queryParam("key", apiKey)
                                 .queryParam("cx", cx)
                                 .queryParam("searchType", "image")
                                 .queryParam("safe", "active")
-                                .queryParam("num", 1)
-                                .queryParam("q", q);
+                                .queryParam("num", 5)
+                                .queryParam("q", query);
+
                         if (domain != null) {
-                            b = b.queryParam("siteSearch", domain);
+                            builder = builder.queryParam("siteSearch", domain);
                         }
 
-                        return b.build();
+                        return builder.build();
                     })
                     .retrieve()
-                    .bodyToMono(Map.class)
+                    .bodyToMono(MAP_TYPE)
                     .block();
 
             if (response == null) return null;
@@ -70,25 +93,33 @@ public class ImageSearchService {
             Object itemsObj = response.get("items");
             if (!(itemsObj instanceof List<?> items) || items.isEmpty()) return null;
 
-            Map<?, ?> first = (Map<?, ?>) items.get(0);
-            Object linkObj = first.get("link");
-            return linkObj != null ? linkObj.toString() : null;
+            for (Object obj : items) {
+                if (!(obj instanceof Map<?, ?> item)) continue;
 
-        } catch (Exception e) {
-            return null;
+                Object linkObj = item.get("link");
+                if (linkObj == null) continue;
+
+                String link = linkObj.toString();
+                if (isValid(link, domain)) return link;
+            }
+
+        } catch (Exception ignored) {
         }
+
+        return null;
     }
 
-    private boolean isAcceptable(String url, String expectedDomain) {
+    private boolean isValid(String url, String expectedDomain) {
         if (url == null || url.isBlank()) return false;
-
         if (!url.startsWith("https://")) return false;
 
-        if (expectedDomain != null && !url.toLowerCase().contains(expectedDomain)) return false;
+        if (expectedDomain != null && !url.toLowerCase().contains(expectedDomain)) {
+            return false;
+        }
 
         try {
-            URI.create(url);
-            return true;
+            URI uri = URI.create(url);
+            return uri.getScheme() != null && uri.getHost() != null;
         } catch (Exception e) {
             return false;
         }
