@@ -1,6 +1,5 @@
 package com.guessme.guessme.service;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
@@ -11,11 +10,9 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-@RequiredArgsConstructor
 public class ImageSearchService {
 
     private final WebClient webClient;
-
     private final String apiKey;
     private final String cx;
 
@@ -50,6 +47,7 @@ public class ImageSearchService {
                 baseQuery
         );
 
+        // 1) Domínios confiáveis primeiro
         for (String query : queries) {
             for (String domain : TRUSTED_DOMAINS) {
                 String link = search(query, domain);
@@ -57,6 +55,7 @@ public class ImageSearchService {
             }
         }
 
+        // 2) Fallback geral
         for (String query : queries) {
             String link = search(query, null);
             if (isValid(link, null)) return link;
