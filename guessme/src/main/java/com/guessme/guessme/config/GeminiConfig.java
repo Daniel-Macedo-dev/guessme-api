@@ -4,6 +4,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
 
 @Configuration
@@ -17,7 +19,7 @@ public class GeminiConfig {
     public WebClient geminiWebClient() {
         return WebClient.builder()
                 .baseUrl("https://generativelanguage.googleapis.com/v1")
-                .defaultHeader("Content-Type", "application/json")
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .defaultHeader("x-goog-api-key", geminiApiKey)
                 .build();
     }

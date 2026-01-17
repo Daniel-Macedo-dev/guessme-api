@@ -30,7 +30,6 @@ public class GameService {
     }
 
     public Mono<AIResponse> askAI(String question) {
-
         String key = geminiConfig.getGeminiApiKey();
         if (key == null || key.isBlank()) {
             return Mono.just(new AIResponse(
@@ -109,41 +108,37 @@ public class GameService {
 
         conversationHistory += "\nIA: " + text;
 
-        boolean venceu = text.startsWith("Sim! O personagem é");
-
-        if (!venceu) {
+        boolean won = text.startsWith("Sim! O personagem é");
+        if (!won) {
             return new AIResponse(text, false, null);
         }
 
-        String nome = extrair(text, "Sim! O personagem é", ".");
-        String obra = extrair(text, "Obra:", "\n");
+        String name = extract(text, "Sim! O personagem é", ".");
+        String work = extract(text, "Obra:", "\n");
 
-        String nomeOk = (nome != null) ? nome : "";
-        String obraOk = (obra != null) ? obra : "";
+        String nameOk = (name != null) ? name : "";
+        String workOk = (work != null) ? work : "";
 
-        String query = (nomeOk + " " + obraOk + " character official portrait").trim();
-        String imagemUrl = imageSearchService.searchImage(query);
+        String query = (nameOk + " " + workOk + " character official portrait").trim();
+        String imageUrl = imageSearchService.searchImage(query);
+        if (imageUrl == null) imageUrl = "";
 
-        if (imagemUrl == null) {
-            imagemUrl = "";
-        }
+        CharacterData data = new CharacterData(nameOk, workOk, imageUrl);
 
-        CharacterData data = new CharacterData(nomeOk, obraOk, imagemUrl);
-
-        return new AIResponse("Sim! O personagem é " + nomeOk + ".", true, data);
+        String answerText = "Sim! O personagem é " + nameOk + ".\nObra: " + workOk;
+        return new AIResponse(answerText, true, data);
     }
 
-    private String extrair(String texto, String inicio, String fim) {
+    private String extract(String text, String startToken, String endToken) {
         try {
-            int i = texto.indexOf(inicio);
+            int i = text.indexOf(startToken);
             if (i < 0) return null;
 
-            int start = i + inicio.length();
-            int j = texto.indexOf(fim, start);
+            int start = i + startToken.length();
+            int j = text.indexOf(endToken, start);
 
-            if (j < 0) j = texto.length();
-
-            return texto.substring(start, j).trim();
+            if (j < 0) j = text.length();
+            return text.substring(start, j).trim();
         } catch (Exception e) {
             return null;
         }
