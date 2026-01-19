@@ -4,9 +4,10 @@ import com.guessme.guessme.config.GeminiConfig;
 import com.guessme.guessme.dto.AIResponse;
 import com.guessme.guessme.dto.CharacterData;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -15,6 +16,9 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class GameService {
+
+    private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
+            new ParameterizedTypeReference<>() {};
 
     private final GeminiConfig geminiConfig;
     private final WebClient geminiWebClient;
@@ -69,64 +73,68 @@ public class GameService {
                 .uri(url)
                 .bodyValue(body)
                 .retrieve()
-                .bodyToMono(Map.class)
-                .map(this::extractAIResponse)
-                .onErrorResume(WebClientResponseException.class, ex -> {
-                    String bodyStr = ex.getResponseBodyAsString();
-                    String details = (bodyStr != null && !bodyStr.isBlank())
-                            ? bodyStr
-                            : ex.getMessage();
-
-                    return Mono.just(new AIResponse(
-                            "Erro da API Gemini (" + ex.getStatusCode().value() + "): " + details,
-                            false,
-                            null
-                    ));
-                })
-                .onErrorResume(Exception.class, ex ->
-                        Mono.just(new AIResponse("Erro inesperado: " + ex.getMessage(), false, null)));
+                .bodyToMono(MAP_TYPE)
+                .flatMap(this::extractAIResponseReactive)
+                // ✅ TIPAGEM EXPLÍCITA — isso impede o erro "no suitable method"
+                .onErrorResume(WebClientResponseException.class,
+                        (WebClientResponseException ex) -> {
+                            String details = ex.getResponseBodyAsString();
+                            if (details == null || details.isBlank()) {
+                                details = ex.getMessage();
+                            }
+                            return Mono.just(new AIResponse(
+                                    "Erro da API Gemini (" + ex.getStatusCode().value() + "): " + details,
+                                    false,
+                                    null
+                            ));
+                        })
+                .onErrorResume(Throwable.class, (Throwable ex) ->
+                        Mono.just(new AIResponse("Erro inesperado: " + ex.getMessage(), false, null))
+                );
     }
 
-    private AIResponse extractAIResponse(Map<String, Object> response) {
-
+    @SuppressWarnings("unchecked")
+    private Mono<AIResponse> extractAIResponseReactive(Map<String, Object> response) {
         List<Map<String, Object>> candidates =
                 (List<Map<String, Object>>) response.getOrDefault("candidates", List.of());
 
         if (candidates.isEmpty()) {
-            return new AIResponse("Resposta vazia da IA.", false, null);
+            return Mono.just(new AIResponse("Resposta vazia da IA.", false, null));
         }
 
+        Map<String, Object> firstCandidate = candidates.getFirst(); // Java 21+
         Map<String, Object> content =
-                (Map<String, Object>) candidates.get(0).getOrDefault("content", Map.of());
+                (Map<String, Object>) firstCandidate.getOrDefault("content", Map.of());
 
         List<Map<String, Object>> parts =
                 (List<Map<String, Object>>) content.getOrDefault("parts", List.of());
 
         String text = parts.isEmpty()
                 ? "Resposta inválida da IA."
-                : parts.get(0).getOrDefault("text", "").toString().trim();
+                : String.valueOf(parts.getFirst().getOrDefault("text", "")).trim();
 
         conversationHistory += "\nIA: " + text;
 
         boolean won = text.startsWith("Sim! O personagem é");
         if (!won) {
-            return new AIResponse(text, false, null);
+            return Mono.just(new AIResponse(text, false, null));
         }
 
         String name = extract(text, "Sim! O personagem é", ".");
         String work = extract(text, "Obra:", "\n");
 
-        String nameOk = (name != null) ? name : "";
-        String workOk = (work != null) ? work : "";
+        String nameOk = name == null ? "" : name;
+        String workOk = work == null ? "" : work;
 
         String query = (nameOk + " " + workOk + " character official portrait").trim();
-        String imageUrl = imageSearchService.searchImage(query);
-        if (imageUrl == null) imageUrl = "";
 
-        CharacterData data = new CharacterData(nameOk, workOk, imageUrl);
-
-        String answerText = "Sim! O personagem é " + nameOk + ".\nObra: " + workOk;
-        return new AIResponse(answerText, true, data);
+        return imageSearchService.searchImage(query)
+                .defaultIfEmpty("")
+                .map(imageUrl -> {
+                    CharacterData data = new CharacterData(nameOk, workOk, imageUrl);
+                    String answerText = "Sim! O personagem é " + nameOk + ".\nObra: " + workOk;
+                    return new AIResponse(answerText, true, data);
+                });
     }
 
     private String extract(String text, String startToken, String endToken) {
@@ -139,7 +147,7 @@ public class GameService {
 
             if (j < 0) j = text.length();
             return text.substring(start, j).trim();
-        } catch (Exception e) {
+        } catch (Exception ignored) {
             return null;
         }
     }
