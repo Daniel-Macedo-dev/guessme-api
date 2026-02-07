@@ -139,7 +139,7 @@ public class GameService {
 
         String prompt =
                 """
-                
+                Você está jogando GuessMe.
                 Categoria atual: %s
 
                 Gere UMA dica curta (1 frase) para ajudar o jogador.
