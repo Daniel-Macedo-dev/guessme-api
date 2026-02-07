@@ -266,7 +266,6 @@ public class GameService {
     }
 
     private String extract(String text, String startToken, String endToken) {
-
         try {
             int i = text.indexOf(startToken);
             if (i < 0) return null;
