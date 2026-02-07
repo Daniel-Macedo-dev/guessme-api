@@ -237,7 +237,6 @@ public class GameService {
                     return new AIResponse(answerText, true, data);
                 });
     }
-
     // ✅ Novo: extrai texto simples (pra hints)
     @SuppressWarnings("unchecked")
     private Mono<String> extractTextOnlyReactive(Map<String, Object> response) {
