@@ -1,84 +1,236 @@
-# 🧩 GuessMe
+# 🧩 GuessMe API
 
-Aplicação **backend** desenvolvida em **Spring Boot (Java 25)** com o objetivo de criar um **jogo de adivinhação de personagens**.
-O jogador faz perguntas e a aplicação responde até que o personagem seja descoberto.
+API REST desenvolvida em **Java com Spring Boot** para gerenciar a lógica do jogo **GuessMe**, um jogo de adivinhação de personagens com apoio de inteligência artificial.  
+A aplicação recebe perguntas do usuário, controla o fluxo da partida, inicia jogos por categoria, gera dicas e retorna respostas consumidas pelo frontend web.
 
-> 🔧 A integração com a **IA da OpenAI** ainda será implementada — por enquanto, o projeto encontra-se em fase de estruturação.
+---
 
-## 🎯 Objetivo
+## 📌 Visão Geral
 
-Explorar a integração entre **backend Java** e **IA generativa**, criando uma API que suporte um frontend interativo (ex.: React).
-Nesta primeira etapa, o foco está na **estruturação do projeto**, **definição dos endpoints REST** e **preparo para futuras integrações**.
+A **GuessMe API** é o backend do ecossistema GuessMe e foi construída para fornecer a lógica central do jogo, permitindo:
 
-## 🧱 Tecnologias utilizadas
+- iniciar novas partidas
+- escolher categorias para o personagem secreto
+- receber perguntas do jogador
+- responder com apoio de IA generativa
+- gerar dicas contextuais
+- retornar dados do personagem quando o jogador acerta
+- integrar com o frontend web do projeto
 
-* **Java 25**
-* **Spring Boot 3.5.7**
-* **Maven**
-* **Spring WebFlux** (para chamadas assíncronas com `WebClient`)
+---
 
-## 📁 Estrutura do projeto
+## 🧱 Tecnologias Utilizadas
 
-```bash
-GuessMe/
-├── src/
-│   ├── main/java/com/guessme/guessme/
-│   │   ├── controller/        # Endpoints REST (start, ask)
-│   │   ├── service/           # Lógica do jogo (estrutura base)
-│   │   ├── dto/               # DTOs para respostas (ex.: AIResponse)
-│   │   └── GuessMeApplication.java
-│   └── resources/
-│       └── application.properties
-├── pom.xml
-└── README.md
-```
-## 🚀 Como executar localmente
+- **Java 25**
+- **Spring Boot 3.5.7**
+- **Spring WebFlux**
+- **Maven**
+- **Lombok**
+- **Google Gemini API**
+- **WebClient**
 
-1. Certifique-se de ter o **Java 25** e o **Maven** instalados.
-2. (Opcional) Configure a variável de ambiente para integração futura com a IA:
+---
 
-   ```bash
-   setx OPENAI_API_KEY "sua_chave_aqui"
-   ```
-3. Execute o projeto:
+## 🏛️ Estrutura do Projeto
 
-   ```bash
-   mvn spring-boot:run
-   ```
-4. A aplicação estará disponível em:
+A aplicação foi organizada em camadas simples para separar responsabilidades e facilitar a evolução do projeto.
 
-   ```
-   http://localhost:8080
-   ```
-## 📌 Endpoints principais
+### Estrutura principal
 
-```bash
-GET  /api/game/start    # Inicia o jogo (IA escolhe o personagem)
-POST /api/game/ask      # Envia uma pergunta (JSON: { "question": "..." })
-```
+- `controller` — endpoints REST do jogo
+- `service` — regras de negócio e comunicação com IA
+- `dto` — objetos de transferência de dados
+- `config` — configuração do Gemini e do `WebClient`
+- `resources` — propriedades da aplicação
 
-**Exemplo de resposta:**
+---
+
+## 🚀 Funcionalidades
+
+- Início de partida com categoria opcional
+- Suporte a categorias como **Geral**, **Anime**, **Games**, **Filmes**, **Séries** e **Quadrinhos**
+- Envio de perguntas para a IA
+- Respostas curtas e consistentes durante a partida
+- Geração de dicas contextuais
+- Detecção de acerto do personagem
+- Retorno de dados do personagem descoberto
+- Busca de imagem para exibição no frontend
+- Integração com o frontend web do GuessMe
+
+---
+
+## 🤖 Integração com IA
+
+O projeto já está integrado ao **Gemini**, utilizando `WebClient` para chamadas à API do Google.  
+A chave é carregada por configuração externa via `gemini.properties`, e a aplicação também utiliza `google.properties` nas configurações do projeto.
+
+---
+
+## 🔗 Endpoints
+
+### Jogo
+
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| GET | `/api/game/categories` | Lista as categorias disponíveis |
+| GET | `/api/game/start` | Inicia uma nova partida com categoria opcional via query param |
+| POST | `/api/game/start` | Inicia uma nova partida via body JSON |
+| POST | `/api/game/ask` | Envia uma pergunta para a IA |
+| POST | `/api/game/hint` | Gera uma dica para o jogador |
+
+---
+
+## 📥 Exemplos de Requisição
+
+### Listar categorias
+
+**GET** `/api/game/categories`
+
+### Iniciar partida sem categoria
+
+**GET** `/api/game/start`
+
+### Iniciar partida com categoria
+
+**GET** `/api/game/start?category=Anime`
+
+### Iniciar partida via JSON
+
+**POST** `/api/game/start`
 
 ```json
 {
-  "response": "Sim, o personagem é real."
+  "category": "Games"
+}
+````
+
+### Enviar pergunta
+
+**POST** `/api/game/ask`
+
+```json
+{
+  "question": "Esse personagem é humano?"
 }
 ```
 
-## 🛠 Estado atual do projeto
+### Pedir dica
 
-* ✅ Estrutura base do backend criada
-* ✅ Endpoints principais definidos
-* ⏳ Integração com OpenAI pendente (necessita chave de API ativa)
-* 🧩 Frontend em React planejado, mas ainda não implementado
+**POST** `/api/game/hint`
 
-## 📅 Próximos passos
+---
 
-* Implementar a comunicação com a OpenAI usando `WebClient`
-* Adicionar memória de contexto para o histórico de perguntas
-* Desenvolver o frontend React (interface do jogo)
-* Criar testes automatizados e documentação de deploy
+## 📤 Exemplo de Resposta
+
+```json
+{
+  "answer": "Sim",
+  "success": false,
+  "character": null
+}
+```
+
+Quando o jogador acerta, a API pode retornar também os dados do personagem:
+
+```json
+{
+  "answer": "Sim! O personagem é Naruto Uzumaki.\nObra: Naruto",
+  "success": true,
+  "character": {
+    "name": "Naruto Uzumaki",
+    "work": "Naruto",
+    "image": "https://..."
+  }
+}
+```
+
+---
+
+## ⚙️ Como Executar Localmente
+
+### Pré-requisitos
+
+Antes de iniciar, tenha instalado:
+
+* **Java 25**
+* **Maven**
+
+### 1. Clone o repositório
+
+```bash
+git clone https://github.com/Daniel-Macedo-dev/guessme-api.git
+```
+
+### 2. Acesse a pasta do projeto
+
+```bash
+cd guessme-api/guessme
+```
+
+### 3. Configure os arquivos de propriedades necessários
+
+A aplicação depende de configurações externas, incluindo a chave do Gemini e, quando aplicável, propriedades relacionadas à busca de imagens.
+
+Exemplo esperado em `gemini.properties`:
+
+```properties
+gemini.api.key=SUA_CHAVE
+```
+
+Exemplo esperado para busca de imagem:
+
+```properties
+google.api.key=SUA_CHAVE
+google.search.cx=SEU_CX
+```
+
+### 4. Execute o projeto
+
+```bash
+mvn spring-boot:run
+```
+
+### 5. A aplicação estará disponível em
+
+```text
+http://localhost:8080
+```
+
+---
+
+## 🧪 Estado Atual do Projeto
+
+* ✅ Backend funcional com endpoints principais
+* ✅ Integração com Gemini implementada
+* ✅ Suporte a categorias
+* ✅ Geração de dicas
+* ✅ Retorno estruturado com DTOs
+* ✅ Busca de imagem para exibição no frontend
+* 🔄 Espaço para evolução do fluxo, persistência e testes
+
+---
+
+## 🎯 Objetivos do Projeto
+
+Este projeto foi desenvolvido com foco em:
+
+* prática de backend com Java e Spring Boot
+* integração com IA generativa
+* uso de WebFlux e `WebClient`
+* construção de API para jogo interativo
+* integração entre backend e frontend
+* composição de portfólio com projeto de IA aplicada
+
+---
+
+## 🔗 Projeto Relacionado
+
+Frontend do ecossistema:
+
+* **GuessMe** — interface web responsável pela interação do usuário com a API
+
+---
 
 ## 📄 Licença
 
-**MIT License** — uso livre, mediante créditos ao autor.
+Este projeto está licenciado sob a **MIT License**.
