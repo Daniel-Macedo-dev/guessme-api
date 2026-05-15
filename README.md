@@ -218,51 +218,94 @@ Quando o jogador acerta, `success` é `true` e `character` contém os dados do p
 
 ### Pré-requisitos
 
-Antes de iniciar, tenha instalado:
-
-* **Java 21**
-* **Maven**
+* **Java 21** (JDK)
+* **Maven 3.9+**
 
 ### 1. Clone o repositório
 
 ```bash
 git clone https://github.com/Daniel-Macedo-dev/guessme-api.git
-```
-
-### 2. Acesse a pasta do projeto
-
-```bash
 cd guessme-api/guessme
 ```
 
-### 3. Configure os arquivos de propriedades necessários
+### 2. Configure as credenciais (obrigatório: Gemini / opcional: Google Image Search)
 
-A aplicação depende de configurações externas, incluindo a chave do Gemini e, quando aplicável, propriedades relacionadas à busca de imagens.
+As chaves de API **não são commitadas**. Você tem duas opções equivalentes:
 
-Exemplo esperado em `gemini.properties`:
+#### Opção A — arquivos `.properties` locais (recomendado para desenvolvimento)
 
-```properties
-gemini.api.key=SUA_CHAVE
+```bash
+# dentro de guessme/src/main/resources/
+cp gemini.properties.example gemini.properties
+cp google.properties.example google.properties
 ```
 
-Exemplo esperado para busca de imagem:
+Edite os arquivos criados e substitua os placeholders pelas suas chaves reais.
 
-```properties
-google.api.key=SUA_CHAVE
-google.search.cx=SEU_CX
+#### Opção B — variáveis de ambiente
+
+| Variável             | Propriedade Spring   | Obrigatório? |
+|----------------------|----------------------|--------------|
+| `GEMINI_API_KEY`     | `gemini.api.key`     | Sim          |
+| `GOOGLE_API_KEY`     | `google.api.key`     | Não          |
+| `GOOGLE_SEARCH_CX`   | `google.search.cx`   | Não          |
+
+**PowerShell (Windows):**
+
+```powershell
+$env:GEMINI_API_KEY   = "sua-chave-gemini"
+$env:GOOGLE_API_KEY   = "sua-chave-google"   # opcional
+$env:GOOGLE_SEARCH_CX = "seu-cx"             # opcional
+mvn spring-boot:run
 ```
 
-### 4. Execute o projeto
+**Bash (Linux/macOS):**
+
+```bash
+export GEMINI_API_KEY="sua-chave-gemini"
+export GOOGLE_API_KEY="sua-chave-google"   # opcional
+export GOOGLE_SEARCH_CX="seu-cx"           # opcional
+mvn spring-boot:run
+```
+
+> **Sem Gemini:** O servidor inicia, mas perguntas e dicas retornam uma mensagem de erro amigável.  
+> **Sem Google Image Search:** O jogo funciona normalmente; o campo `character.image` retorna vazio quando o jogador acerta.
+
+### 3. Execute o projeto
 
 ```bash
 mvn spring-boot:run
 ```
 
-### 5. A aplicação estará disponível em
+### 4. A aplicação estará disponível em
 
 ```text
 http://localhost:8080
 ```
+
+### 5. Executar testes (sem credenciais reais)
+
+```bash
+mvn test
+```
+
+Os testes são completamente locais — nenhuma chamada a Gemini ou Google é feita.  
+Para rodar o teste de integração ao vivo (requer credenciais reais):
+
+```bash
+mvn test -Dgroups=live -Dsurefire.excludedGroups=""
+```
+
+### 6. CORS
+
+Por padrão, o servidor aceita requisições de `http://localhost:5173` (Vite dev server).  
+Para adicionar origens adicionais, edite `application.properties`:
+
+```properties
+cors.allowed-origins=http://localhost:5173,https://seu-dominio.com
+```
+
+Ou defina a variável `CORS_ALLOWED_ORIGINS`.
 
 ---
 
@@ -274,7 +317,9 @@ http://localhost:8080
 * ✅ Geração de dicas
 * ✅ Retorno estruturado com DTOs
 * ✅ Busca de imagem para exibição no frontend
-* 🔄 Espaço para evolução do fluxo, persistência e testes
+* ✅ Gerenciamento de sessão por `sessionId`
+* ✅ Testes locais e determinísticos (`mvn test` não requer credenciais)
+* ✅ CORS centralizado e configurável
 
 ---
 
