@@ -5,6 +5,7 @@ import com.guessme.guessme.dto.AIResponse;
 import com.guessme.guessme.dto.CharacterData;
 import com.guessme.guessme.model.GameSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -33,6 +34,9 @@ public class GameService {
     private final GeminiConfig geminiConfig;
     private final WebClient geminiWebClient;
     private final ImageSearchService imageSearchService;
+
+    @Value("${gemini.model:gemini-3.1-flash-lite}")
+    private String geminiModel;
 
     private final ConcurrentHashMap<String, GameSession> sessions = new ConcurrentHashMap<>();
 
@@ -132,7 +136,7 @@ public class GameService {
         final GameSession finalSession = session;
 
         return geminiWebClient.post()
-                .uri("/models/gemini-2.5-flash:generateContent")
+                .uri("/models/" + geminiModel + ":generateContent")
                 .bodyValue(body)
                 .retrieve()
                 .bodyToMono(MAP_TYPE)
@@ -201,7 +205,7 @@ public class GameService {
         final GameSession finalSession = session;
 
         return geminiWebClient.post()
-                .uri("/models/gemini-2.5-flash:generateContent")
+                .uri("/models/" + geminiModel + ":generateContent")
                 .bodyValue(body)
                 .retrieve()
                 .bodyToMono(MAP_TYPE)
