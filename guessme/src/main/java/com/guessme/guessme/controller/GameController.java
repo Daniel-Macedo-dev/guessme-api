@@ -22,10 +22,11 @@ import java.util.List;
  *
  * sessionId is optional for backward-compat local testing; omitting it routes
  * to a shared default session (not safe for concurrent multi-user scenarios).
+ *
+ * CORS is handled centrally by CorsConfig; no per-controller @CrossOrigin needed.
  */
 @RestController
 @RequestMapping("/api/game")
-@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class GameController {
 
