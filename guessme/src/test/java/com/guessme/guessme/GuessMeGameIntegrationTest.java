@@ -7,6 +7,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+/**
+ * Live integration test — requires real API keys in gemini.properties and google.properties.
+ * Does not run in CI without those files. No assertions: output is printed for manual review.
+ */
 @SpringBootTest
 public class GuessMeGameIntegrationTest {
 
@@ -15,12 +19,14 @@ public class GuessMeGameIntegrationTest {
 
     @Test
     void testMotokoVictory() {
-
         AIResponse startResponse = gameService.startGame().block();
         System.out.println("IA inicial: " + startResponse.answer());
 
+        String sessionId = startResponse.sessionId();
+
         AIResponse aiResponse = gameService.askAI(
-                "O personagem é Motoko Kusanagi, de Ghost in the Shell?"
+                "O personagem é Motoko Kusanagi, de Ghost in the Shell?",
+                sessionId
         ).block();
 
         System.out.println("Resposta IA: " + aiResponse.answer());
