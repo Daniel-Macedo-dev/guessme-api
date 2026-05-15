@@ -247,6 +247,7 @@ Edite os arquivos criados e substitua os placeholders pelas suas chaves reais.
 | Variável             | Propriedade Spring   | Obrigatório? |
 |----------------------|----------------------|--------------|
 | `GEMINI_API_KEY`     | `gemini.api.key`     | Sim          |
+| `GEMINI_MODEL`       | `gemini.model`       | Não (padrão: `gemini-3.1-flash-lite`) |
 | `GOOGLE_API_KEY`     | `google.api.key`     | Não          |
 | `GOOGLE_SEARCH_CX`   | `google.search.cx`   | Não          |
 
