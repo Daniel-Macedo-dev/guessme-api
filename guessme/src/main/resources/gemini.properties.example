@@ -1,0 +1,9 @@
+# Copy this file to gemini.properties and replace the placeholder with your real key.
+# gemini.properties is listed in .gitignore and will NOT be committed.
+#
+# Get your key at: https://aistudio.google.com/app/apikey
+#
+# Alternatively, set the GEMINI_API_KEY environment variable — Spring Boot
+# maps it automatically to gemini.api.key without needing this file.
+
+gemini.api.key=YOUR_GEMINI_API_KEY_HERE
