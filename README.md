@@ -21,7 +21,7 @@ A **GuessMe API** é o backend do ecossistema GuessMe e foi construída para for
 
 ## 🧱 Tecnologias Utilizadas
 
-- **Java 25**
+- **Java 21**
 - **Spring Boot 3.5.7**
 - **Spring WebFlux**
 - **Maven**
@@ -102,7 +102,7 @@ A chave é carregada por configuração externa via `gemini.properties`, e a apl
 {
   "category": "Games"
 }
-````
+```
 
 ### Enviar pergunta
 
@@ -110,7 +110,8 @@ A chave é carregada por configuração externa via `gemini.properties`, e a apl
 
 ```json
 {
-  "question": "Esse personagem é humano?"
+  "question": "Esse personagem é humano?",
+  "sessionId": "<id retornado pelo start>"
 }
 ```
 
@@ -118,19 +119,83 @@ A chave é carregada por configuração externa via `gemini.properties`, e a apl
 
 **POST** `/api/game/hint`
 
+```json
+{
+  "sessionId": "<id retornado pelo start>"
+}
+```
+
 ---
 
-## 📤 Exemplo de Resposta
+## 🔑 Fluxo de Sessão (importante para o frontend)
+
+Cada partida possui um `sessionId` único gerado pelo backend. O frontend **deve** armazená-lo e enviá-lo em todas as requisições subsequentes.
+
+### 1. Iniciar partida → guardar o `sessionId`
+
+**POST** `/api/game/start`
+
+```json
+{ "category": "Anime" }
+```
+
+Resposta:
+
+```json
+{
+  "answer": "Ok! Já escolhi um personagem da categoria: Anime. Pode fazer sua primeira pergunta!",
+  "success": false,
+  "character": null,
+  "sessionId": "3f2a1b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c"
+}
+```
+
+### 2. Perguntar → enviar o `sessionId`
+
+**POST** `/api/game/ask`
+
+```json
+{
+  "question": "Esse personagem é humano?",
+  "sessionId": "3f2a1b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c"
+}
+```
+
+Resposta:
 
 ```json
 {
   "answer": "Sim",
   "success": false,
-  "character": null
+  "character": null,
+  "sessionId": "3f2a1b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c"
 }
 ```
 
-Quando o jogador acerta, a API pode retornar também os dados do personagem:
+### 3. Pedir dica → enviar o `sessionId`
+
+**POST** `/api/game/hint`
+
+```json
+{
+  "sessionId": "3f2a1b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c"
+}
+```
+
+Resposta:
+
+```json
+{
+  "answer": "Este personagem é conhecido por sua habilidade com espadas.",
+  "success": false,
+  "character": null,
+  "sessionId": "3f2a1b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c"
+}
+```
+
+### 4. Resposta de vitória
+
+Quando o jogador acerta, `success` é `true` e `character` contém os dados do personagem:
 
 ```json
 {
@@ -139,10 +204,13 @@ Quando o jogador acerta, a API pode retornar também os dados do personagem:
   "character": {
     "name": "Naruto Uzumaki",
     "work": "Naruto",
-    "image": "https://..."
-  }
+    "image": "https://upload.wikimedia.org/..."
+  },
+  "sessionId": "3f2a1b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c"
 }
 ```
+
+> **Nota:** Omitir `sessionId` nas requisições de `/ask` e `/hint` ainda funciona para testes locais (usa uma sessão padrão compartilhada), mas **não é o comportamento recomendado** para o frontend em produção. Cada partida deve usar o `sessionId` retornado pelo `/start`.
 
 ---
 
@@ -152,7 +220,7 @@ Quando o jogador acerta, a API pode retornar também os dados do personagem:
 
 Antes de iniciar, tenha instalado:
 
-* **Java 25**
+* **Java 21**
 * **Maven**
 
 ### 1. Clone o repositório
