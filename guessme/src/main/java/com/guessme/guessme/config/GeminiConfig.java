@@ -8,11 +8,22 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
 
+/**
+ * Loads the Gemini API key from (in order of precedence):
+ *   1. Environment variable GEMINI_API_KEY
+ *   2. gemini.properties on the classpath (local dev — not committed)
+ *
+ * If neither is set the key will be blank and GameService returns a
+ * user-visible error message without crashing the application context.
+ *
+ * To set up locally: copy gemini.properties.example → gemini.properties
+ * and replace the placeholder value with your real key.
+ */
 @Configuration
-@PropertySource("classpath:gemini.properties")
+@PropertySource(value = "classpath:gemini.properties", ignoreResourceNotFound = true)
 public class GeminiConfig {
 
-    @Value("${gemini.api.key}")
+    @Value("${gemini.api.key:}")
     private String geminiApiKey;
 
     @Bean
