@@ -64,6 +64,16 @@
                 </configuration>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- Tests tagged @Tag("live") require real API keys and are excluded
+                         from normal 'mvn test'. Run them manually with:
+                         mvn test -Dgroups=live -Dsurefire.excludedGroups="" -->
+                    <excludedGroups>live</excludedGroups>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
