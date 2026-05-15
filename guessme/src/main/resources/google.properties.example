@@ -1,0 +1,14 @@
+# Copy this file to google.properties and replace the placeholders with your real values.
+# google.properties is listed in .gitignore and will NOT be committed.
+#
+# These credentials enable the character-image lookup at game end.
+# The feature is silently disabled when these values are absent — the game
+# still works but the character image will be missing.
+#
+# Get a Custom Search API key at: https://developers.google.com/custom-search/v1/introduction
+# Create a Programmable Search Engine at: https://programmablesearchengine.google.com/
+#
+# Alternatively, set GOOGLE_API_KEY and GOOGLE_SEARCH_CX environment variables.
+
+google.api.key=YOUR_GOOGLE_API_KEY_HERE
+google.search.cx=YOUR_SEARCH_ENGINE_CX_HERE
