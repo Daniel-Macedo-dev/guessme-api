@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.env.Environment;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
@@ -14,6 +15,9 @@ import reactor.core.publisher.Mono;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.when;
 
 /**
@@ -27,8 +31,21 @@ class GameControllerTest {
     @Autowired
     private WebTestClient webTestClient;
 
+    @Autowired
+    private Environment environment;
+
     @MockitoBean
     private GameService gameService;
+
+    // ── gemini.model property ──────────────────────────────────────────────
+
+    @Test
+    void geminiModel_propertyIsLoaded() {
+        String model = environment.getProperty("gemini.model");
+        assertNotNull(model, "gemini.model must be present in test application.properties");
+        assertFalse(model.isBlank(), "gemini.model must not be blank");
+        assertEquals("gemini-3.1-flash-lite", model);
+    }
 
     // ── GET /api/game/categories ────────────────────────────────────────────
 
