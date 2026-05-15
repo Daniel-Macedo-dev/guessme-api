@@ -3,14 +3,18 @@ package com.guessme.guessme;
 import com.guessme.guessme.dto.AIResponse;
 import com.guessme.guessme.dto.CharacterData;
 import com.guessme.guessme.service.GameService;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 /**
  * Live integration test — requires real API keys in gemini.properties and google.properties.
- * Does not run in CI without those files. No assertions: output is printed for manual review.
+ * Excluded from normal 'mvn test' by the @Tag("live") Surefire filter.
+ * Run manually: mvn test -Dgroups=live -Dsurefire.excludedGroups=""
+ * No assertions: output is printed for manual review.
  */
+@Tag("live")
 @SpringBootTest
 public class GuessMeGameIntegrationTest {
 
