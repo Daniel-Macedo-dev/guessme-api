@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -25,6 +26,7 @@ class GameServiceTest {
     @BeforeEach
     void setUp() {
         gameService = new GameService(geminiConfig, geminiWebClient, imageSearchService);
+        ReflectionTestUtils.setField(gameService, "geminiModel", "gemini-3.1-flash-lite");
     }
 
     // --- blank / null question validation ---
@@ -108,6 +110,13 @@ class GameServiceTest {
         assertNotNull(result);
         assertFalse(result.success());
         assertTrue(result.answer().toLowerCase().contains("sess"));
+    }
+
+    @Test
+    void geminiModel_isInjected() {
+        String model = (String) ReflectionTestUtils.getField(gameService, "geminiModel");
+        assertNotNull(model, "geminiModel must not be null after setUp");
+        assertFalse(model.isBlank(), "geminiModel must not be blank");
     }
 
     @Test
