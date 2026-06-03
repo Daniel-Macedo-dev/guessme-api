@@ -13,6 +13,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class GameServiceTest {
@@ -117,6 +118,48 @@ class GameServiceTest {
         String model = (String) ReflectionTestUtils.getField(gameService, "geminiModel");
         assertNotNull(model, "geminiModel must not be null after setUp");
         assertFalse(model.isBlank(), "geminiModel must not be blank");
+    }
+
+    // --- missing Gemini API key ---
+
+    @Test
+    void askAI_missingGeminiKey_returnsConfigError() {
+        AIResponse start = gameService.startGame(null).block();
+        assertNotNull(start);
+
+        when(geminiConfig.getGeminiApiKey()).thenReturn("");
+
+        AIResponse result = gameService.askAI("É humano?", start.sessionId()).block();
+
+        assertNotNull(result);
+        assertFalse(result.success());
+        assertTrue(result.answer().contains("gemini.api.key"));
+        // geminiWebClient is never touched — strict stubs would fail if it were called
+    }
+
+    @Test
+    void hint_missingGeminiKey_returnsConfigError() {
+        AIResponse start = gameService.startGame(null).block();
+        assertNotNull(start);
+
+        when(geminiConfig.getGeminiApiKey()).thenReturn("");
+
+        AIResponse result = gameService.hint(start.sessionId()).block();
+
+        assertNotNull(result);
+        assertFalse(result.success());
+        assertTrue(result.answer().contains("gemini.api.key"));
+    }
+
+    // --- hint session handling ---
+
+    @Test
+    void hint_unknownSessionId_returnsSessionNotFoundError() {
+        AIResponse result = gameService.hint("non-existent-uuid").block();
+
+        assertNotNull(result);
+        assertFalse(result.success());
+        assertTrue(result.answer().toLowerCase().contains("sess"));
     }
 
     @Test
