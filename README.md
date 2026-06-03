@@ -286,12 +286,21 @@ http://localhost:8080
 
 ### 5. Executar testes (sem credenciais reais)
 
+**Windows (Maven Wrapper — recomendado):**
+
+```powershell
+.\mvnw.cmd test --no-transfer-progress
+```
+
+**Linux/macOS ou Maven instalado globalmente:**
+
 ```bash
 mvn test
 ```
 
 Os testes são completamente locais — nenhuma chamada a Gemini ou Google é feita.  
-Para rodar o teste de integração ao vivo (requer credenciais reais):
+Testes marcados com `@Tag("live")` requerem credenciais reais e são excluídos automaticamente do `mvn test` normal.  
+Para rodá-los manualmente:
 
 ```bash
 mvn test -Dgroups=live -Dsurefire.excludedGroups=""
