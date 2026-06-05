@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +27,10 @@ public class GameService {
 
     private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
             new ParameterizedTypeReference<>() {};
+
+    // Matches the winning prefix tolerating case and extra internal whitespace.
+    private static final Pattern WIN_PREFIX_RE = Pattern.compile(
+            "(?i)^sim!\\s+o\\s+personagem\\s+é\\s+");
 
     // Callers that omit sessionId share this fallback (backward compat for local testing).
     static final String DEFAULT_SESSION_ID = "default";
@@ -282,12 +288,12 @@ public class GameService {
 
         session.appendHistory("\nIA: " + text);
 
-        boolean won = text.startsWith("Sim! O personagem é");
+        boolean won = isWinResponse(text);
         if (!won) {
             return Mono.just(new AIResponse(text, false, null, sessionId));
         }
 
-        String name = extract(text, "Sim! O personagem é", ".");
+        String name = extractName(text);
         String work = extract(text, "Obra:", "\n");
 
         String nameOk = name == null ? "" : name;
@@ -327,6 +333,28 @@ public class GameService {
         text = text.replaceAll("^([Dd]ica\\s*:\\s*)", "").trim();
 
         return Mono.just(text);
+    }
+
+    private boolean isWinResponse(String text) {
+        return WIN_PREFIX_RE.matcher(text).find();
+    }
+
+    /**
+     * Extracts the character name from a win response.
+     * The name ends at the first period, newline, or "Obra:" — whichever comes first.
+     */
+    private String extractName(String text) {
+        Matcher m = WIN_PREFIX_RE.matcher(text);
+        if (!m.find()) return "";
+        String after = text.substring(m.end());
+        int end = after.length();
+        int dotIdx = after.indexOf('.');
+        int nlIdx = after.indexOf('\n');
+        int obraIdx = after.toLowerCase().indexOf("obra:");
+        if (dotIdx >= 0) end = Math.min(end, dotIdx);
+        if (nlIdx >= 0) end = Math.min(end, nlIdx);
+        if (obraIdx >= 0) end = Math.min(end, obraIdx);
+        return after.substring(0, end).trim();
     }
 
     private String extract(String text, String startToken, String endToken) {
