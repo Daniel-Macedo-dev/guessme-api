@@ -17,6 +17,8 @@ import java.util.function.Function;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -97,6 +99,9 @@ class ImageSearchServiceTest {
         String result = service(VALID_KEY, VALID_CX).searchImage("Naruto").block();
 
         assertEquals(expectedUrl, result);
+        // The any-domain fallback must never be assembled when an allowed domain succeeds.
+        // With Mono.defer the fallback is lazy, so bodyToMono is called exactly once.
+        verify(responseSpec, times(1)).bodyToMono(any(ParameterizedTypeReference.class));
     }
 
     @Test
@@ -114,24 +119,23 @@ class ImageSearchServiceTest {
 
     @Test
     void searchImage_allDomainsFail_fallsBackToAnyDomain() {
-        // searchImage() calls searchInDomain(null) EAGERLY to build fromAnyDomain before
-        // subscribing to fromAllowedDomains. Mock call order is therefore:
-        //   call 1 — any-domain Mono setup (eager, before subscription)
-        //   calls 2-5 — domain searches during concatMap subscription
+        // fromAnyDomain is wrapped in Mono.defer, so searchInDomain(null) is only called
+        // after all allowed-domain searches complete empty.
         // ALLOWED_DOMAINS order: wikipedia.org, wikimedia.org, fandom.com, imdb.com.
         Map<String, Object> emptyItems = Map.of("items", List.of());
         String expectedUrl = "https://static.wikia.nocookie.net/naruto.jpg";
         Map<String, Object> goodResponse = Map.of("items", List.of(Map.of("link", expectedUrl)));
 
         when(responseSpec.bodyToMono(any(ParameterizedTypeReference.class)))
-            .thenReturn(Mono.just(goodResponse)) // call 1: any-domain Mono built eagerly
-            .thenReturn(Mono.just(emptyItems))   // call 2: wikipedia.org
-            .thenReturn(Mono.just(emptyItems))   // call 3: wikimedia.org
-            .thenReturn(Mono.just(emptyItems))   // call 4: fandom.com
-            .thenReturn(Mono.just(emptyItems));  // call 5: imdb.com
+            .thenReturn(Mono.just(emptyItems))   // call 1: wikipedia.org
+            .thenReturn(Mono.just(emptyItems))   // call 2: wikimedia.org
+            .thenReturn(Mono.just(emptyItems))   // call 3: fandom.com
+            .thenReturn(Mono.just(emptyItems))   // call 4: imdb.com
+            .thenReturn(Mono.just(goodResponse)); // call 5: any-domain fallback (lazy)
 
         String result = service(VALID_KEY, VALID_CX).searchImage("Naruto").block();
 
         assertEquals(expectedUrl, result);
+        verify(responseSpec, times(5)).bodyToMono(any(ParameterizedTypeReference.class));
     }
 }
