@@ -2,6 +2,7 @@ package com.guessme.guessme;
 
 import com.guessme.guessme.config.GeminiConfig;
 import com.guessme.guessme.dto.AIResponse;
+import com.guessme.guessme.model.GameSession;
 import com.guessme.guessme.service.GameService;
 import com.guessme.guessme.service.ImageSearchService;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,8 +15,11 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -303,6 +307,145 @@ class GameServiceTest {
         when(bodySpec.bodyValue(any())).thenReturn(headersSpec);
         when(headersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.bodyToMono(any(ParameterizedTypeReference.class))).thenReturn(responseBody);
+    }
+
+    // --- default-session fallback (null / blank sessionId) ---
+
+    @Test
+    void askAI_nullSessionId_usesDefaultSessionFallback() {
+        // null sessionId must route to the shared default session, not return "session not found".
+        // The config-error guard is used here to reach the key check without calling Gemini.
+        when(geminiConfig.getGeminiApiKey()).thenReturn("");
+
+        AIResponse result = gameService.askAI("É humano?", null).block();
+
+        assertNotNull(result);
+        assertFalse(result.success());
+        assertTrue(result.answer().contains("gemini.api.key"),
+                "null sessionId must resolve to the default session, not session-not-found");
+    }
+
+    @Test
+    void askAI_blankSessionId_usesDefaultSessionFallback() {
+        when(geminiConfig.getGeminiApiKey()).thenReturn("");
+
+        AIResponse result = gameService.askAI("É humano?", "   ").block();
+
+        assertNotNull(result);
+        assertFalse(result.success());
+        assertTrue(result.answer().contains("gemini.api.key"),
+                "blank sessionId must resolve to the default session, not session-not-found");
+    }
+
+    @Test
+    void hint_nullSessionId_usesDefaultSessionFallback() {
+        when(geminiConfig.getGeminiApiKey()).thenReturn("");
+
+        AIResponse result = gameService.hint(null).block();
+
+        assertNotNull(result);
+        assertFalse(result.success());
+        assertTrue(result.answer().contains("gemini.api.key"),
+                "hint with null sessionId must resolve to the default session, not session-not-found");
+    }
+
+    @Test
+    void hint_blankSessionId_usesDefaultSessionFallback() {
+        when(geminiConfig.getGeminiApiKey()).thenReturn("");
+
+        AIResponse result = gameService.hint("  ").block();
+
+        assertNotNull(result);
+        assertFalse(result.success());
+        assertTrue(result.answer().contains("gemini.api.key"),
+                "hint with blank sessionId must resolve to the default session, not session-not-found");
+    }
+
+    // --- session eviction ---
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void eviction_staleSessionsRemovedWhenCapacityReached() {
+        ConcurrentHashMap<String, GameSession> sessions =
+                (ConcurrentHashMap<String, GameSession>) ReflectionTestUtils.getField(gameService, "sessions");
+
+        // Fill exactly MAX_SESSIONS (200) stale entries so evictIfNeeded() fires on the next startGame.
+        for (int i = 0; i < 200; i++) {
+            GameSession stale = new GameSession();
+            ReflectionTestUtils.setField(stale, "lastAccess", Instant.now().minus(2, ChronoUnit.HOURS));
+            sessions.put("stale-" + i, stale);
+        }
+
+        gameService.startGame(null).block(); // triggers evictIfNeeded()
+
+        assertFalse(sessions.containsKey("stale-0"), "Stale session 0 must be evicted");
+        assertFalse(sessions.containsKey("stale-199"), "Stale session 199 must be evicted");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void eviction_freshSessionsSurviveEviction() {
+        ConcurrentHashMap<String, GameSession> sessions =
+                (ConcurrentHashMap<String, GameSession>) ReflectionTestUtils.getField(gameService, "sessions");
+
+        // 199 stale + 1 fresh = 200 total, enough to trigger eviction.
+        for (int i = 0; i < 199; i++) {
+            GameSession stale = new GameSession();
+            ReflectionTestUtils.setField(stale, "lastAccess", Instant.now().minus(2, ChronoUnit.HOURS));
+            sessions.put("stale-" + i, stale);
+        }
+        sessions.put("fresh-session", new GameSession()); // lastAccess = now
+
+        gameService.startGame(null).block();
+
+        assertTrue(sessions.containsKey("fresh-session"), "Fresh session must survive eviction");
+        assertFalse(sessions.containsKey("stale-0"), "Stale sessions must be removed");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void eviction_defaultSessionNeverEvictedEvenWhenStale() {
+        ConcurrentHashMap<String, GameSession> sessions =
+                (ConcurrentHashMap<String, GameSession>) ReflectionTestUtils.getField(gameService, "sessions");
+
+        // Place a stale default session in the map.
+        // "default" mirrors GameService.DEFAULT_SESSION_ID (package-private constant).
+        GameSession staleDefault = new GameSession();
+        ReflectionTestUtils.setField(staleDefault, "lastAccess", Instant.now().minus(2, ChronoUnit.HOURS));
+        sessions.put("default", staleDefault);
+
+        // Fill the rest to reach capacity and trigger eviction.
+        for (int i = 0; i < 199; i++) {
+            GameSession stale = new GameSession();
+            ReflectionTestUtils.setField(stale, "lastAccess", Instant.now().minus(2, ChronoUnit.HOURS));
+            sessions.put("stale-" + i, stale);
+        }
+
+        gameService.startGame(null).block();
+
+        assertTrue(sessions.containsKey("default"),
+                "DEFAULT_SESSION_ID must never be removed by eviction, even when stale");
+        assertFalse(sessions.containsKey("stale-0"), "Other stale sessions must be evicted");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void eviction_doesNotRunBelowCapacity() {
+        ConcurrentHashMap<String, GameSession> sessions =
+                (ConcurrentHashMap<String, GameSession>) ReflectionTestUtils.getField(gameService, "sessions");
+
+        // Add a small number of stale sessions — well below MAX_SESSIONS (200).
+        for (int i = 0; i < 5; i++) {
+            GameSession stale = new GameSession();
+            ReflectionTestUtils.setField(stale, "lastAccess", Instant.now().minus(2, ChronoUnit.HOURS));
+            sessions.put("stale-" + i, stale);
+        }
+
+        gameService.startGame(null).block();
+
+        // Eviction guard (size < MAX_SESSIONS) prevents removal.
+        assertTrue(sessions.containsKey("stale-0"),
+                "Stale sessions must not be removed when total count is below MAX_SESSIONS");
     }
 
     @Test
