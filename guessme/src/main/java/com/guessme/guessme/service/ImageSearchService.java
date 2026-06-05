@@ -56,10 +56,10 @@ public class ImageSearchService {
                         )
                         .next();
 
-        Mono<String> fromAnyDomain =
+        Mono<String> fromAnyDomain = Mono.defer(() ->
                 searchInDomain(safeQuery, null)
                         .filter(url -> isAcceptable(url, null))
-                        .onErrorResume(e -> Mono.empty());
+                        .onErrorResume(e -> Mono.empty()));
 
         return fromAllowedDomains
                 .switchIfEmpty(fromAnyDomain)
