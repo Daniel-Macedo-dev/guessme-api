@@ -41,7 +41,7 @@ public class GameService {
     private final WebClient geminiWebClient;
     private final ImageSearchService imageSearchService;
 
-    @Value("${gemini.model:gemini-3.1-flash-lite}")
+    @Value("${gemini.model:gemini-2.0-flash-lite}")
     private String geminiModel;
 
     private final ConcurrentHashMap<String, GameSession> sessions = new ConcurrentHashMap<>();
