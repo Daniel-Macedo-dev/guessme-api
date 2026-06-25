@@ -44,7 +44,7 @@ class GameControllerTest {
         String model = environment.getProperty("gemini.model");
         assertNotNull(model, "gemini.model must be present in test application.properties");
         assertFalse(model.isBlank(), "gemini.model must not be blank");
-        assertEquals("gemini-3.1-flash-lite", model);
+        assertEquals("gemini-2.0-flash-lite", model);
     }
 
     // ── GET /api/game/categories ────────────────────────────────────────────

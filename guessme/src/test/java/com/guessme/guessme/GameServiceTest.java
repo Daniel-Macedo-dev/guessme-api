@@ -39,7 +39,7 @@ class GameServiceTest {
     @BeforeEach
     void setUp() {
         gameService = new GameService(geminiConfig, geminiWebClient, imageSearchService);
-        ReflectionTestUtils.setField(gameService, "geminiModel", "gemini-3.1-flash-lite");
+        ReflectionTestUtils.setField(gameService, "geminiModel", "gemini-2.0-flash-lite");
     }
 
     // --- blank / null question validation ---
