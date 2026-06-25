@@ -244,12 +244,15 @@ Edite os arquivos criados e substitua os placeholders pelas suas chaves reais.
 
 #### Opção B — variáveis de ambiente
 
-| Variável             | Propriedade Spring   | Obrigatório? |
-|----------------------|----------------------|--------------|
-| `GEMINI_API_KEY`     | `gemini.api.key`     | Sim          |
-| `GEMINI_MODEL`       | `gemini.model`       | Não (padrão: `gemini-2.0-flash-lite`) |
-| `GOOGLE_API_KEY`     | `google.api.key`     | Não          |
-| `GOOGLE_SEARCH_CX`   | `google.search.cx`   | Não          |
+| Variável               | Propriedade Spring      | Obrigatório? |
+|------------------------|-------------------------|--------------|
+| `GEMINI_API_KEY`       | `gemini.api.key`        | Sim          |
+| `GEMINI_MODEL`         | `gemini.model`          | Não (padrão: `gemini-2.0-flash-lite`) |
+| `GOOGLE_API_KEY`       | `google.api.key`        | Não          |
+| `GOOGLE_SEARCH_CX`     | `google.search.cx`      | Não          |
+| `PORT`                 | `server.port`           | Não (padrão: `8080`) |
+| `SERVER_PORT`          | `server.port`           | Não (padrão: `8080`) |
+| `CORS_ALLOWED_ORIGINS` | `cors.allowed-origins`  | Não (padrão: `http://localhost:5173`) |
 
 **PowerShell (Windows):**
 
@@ -343,6 +346,51 @@ Este projeto foi desenvolvido com foco em:
 * construção de API para jogo interativo
 * integração entre backend e frontend
 * composição de portfólio com projeto de IA aplicada
+
+---
+
+## 🚀 Deploy em Produção
+
+### Checklist antes de publicar
+
+- [ ] `GEMINI_API_KEY` configurada no ambiente do servidor
+- [ ] `CORS_ALLOWED_ORIGINS` apontando para a URL real do frontend (ex: `https://seu-frontend.com`)
+- [ ] `PORT` ou `SERVER_PORT` definida se necessário (a maioria das plataformas injeta `PORT` automaticamente)
+- [ ] `GOOGLE_API_KEY` e `GOOGLE_SEARCH_CX` configuradas se quiser imagens (opcional)
+- [ ] `mvn test` passou antes do deploy
+- [ ] Nenhum arquivo `.properties` com credenciais reais incluído no build
+
+### Health check
+
+O endpoint `GET /api/game/health` retorna `{"status":"ok"}` com HTTP 200.
+Use-o para verificar se o serviço está operacional.
+
+### Notas por plataforma
+
+**Railway / Render / Fly.io**
+
+A variável `PORT` é injetada automaticamente — o servidor a lê via `server.port=${PORT:8080}`.
+Configure as demais variáveis de ambiente no painel da plataforma.
+
+**Heroku**
+
+Igual ao Railway: `PORT` é injetado, demais variáveis via `heroku config:set`.
+
+**VPS / servidor próprio**
+
+```bash
+export GEMINI_API_KEY="sua-chave"
+export CORS_ALLOWED_ORIGINS="https://seu-frontend.com"
+mvn spring-boot:run
+```
+
+Ou empacote com `mvn package` e execute o JAR gerado:
+
+```bash
+GEMINI_API_KEY="sua-chave" \
+CORS_ALLOWED_ORIGINS="https://seu-frontend.com" \
+java -jar guessme/target/guessme-*.jar
+```
 
 ---
 

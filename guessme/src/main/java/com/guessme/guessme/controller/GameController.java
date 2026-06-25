@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * API contract for frontend:
@@ -48,10 +49,18 @@ public class GameController {
         return gameService.startGame(category);
     }
 
+    @GetMapping("/health")
+    public Map<String, String> health() {
+        return Map.of("status", "ok");
+    }
+
     @PostMapping("/ask")
     public Mono<AIResponse> askAI(@RequestBody(required = false) QuestionDTO dto) {
         if (dto == null || dto.question() == null || dto.question().isBlank()) {
             return Mono.just(new AIResponse("Pergunta inválida ou vazia.", false, null, null));
+        }
+        if (dto.question().length() > 300) {
+            return Mono.just(new AIResponse("Pergunta muito longa (máximo 300 caracteres).", false, null, null));
         }
         return gameService.askAI(dto.question(), dto.sessionId());
     }
