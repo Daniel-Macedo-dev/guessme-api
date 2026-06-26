@@ -394,6 +394,54 @@ java -jar guessme/target/guessme-*.jar
 
 ---
 
+## 🐳 Docker
+
+### Build da imagem
+
+```bash
+docker build -t guessme-api:local .
+```
+
+### Executar o container
+
+```bash
+docker run --rm -p 8080:8080 \
+  -e GEMINI_API_KEY=sua-chave \
+  -e CORS_ALLOWED_ORIGINS=http://localhost:5173 \
+  guessme-api:local
+```
+
+### Variáveis de ambiente do container
+
+| Variável               | Obrigatório? | Padrão                  | Descrição                         |
+|------------------------|--------------|-------------------------|-----------------------------------|
+| `GEMINI_API_KEY`       | Sim          | —                       | Chave da API Gemini               |
+| `PORT`                 | Não          | `8080`                  | Porta HTTP do servidor            |
+| `CORS_ALLOWED_ORIGINS` | Não          | `http://localhost:5173` | Origens CORS permitidas           |
+| `GEMINI_MODEL`         | Não          | `gemini-2.0-flash-lite` | Modelo Gemini                     |
+| `GOOGLE_API_KEY`       | Não          | —                       | Chave Google (busca de imagens)   |
+| `GOOGLE_SEARCH_CX`     | Não          | —                       | CX do mecanismo de busca Google   |
+
+> Secrets nunca são incluídos na imagem. Passe-os sempre via variáveis de ambiente em tempo de execução.
+
+### Health check
+
+```
+GET /api/game/health  →  {"status":"ok"}
+```
+
+---
+
+## ⚙️ CI (GitHub Actions)
+
+O repositório possui um workflow em `.github/workflows/ci.yml` que executa automaticamente em push e pull request para `main`:
+
+- configura Java 21 (Temurin) com cache Maven
+- executa `./mvnw test` a partir do diretório `guessme/`
+- testes passam sem credenciais reais (Gemini e Google são mockados)
+
+---
+
 ## 🔗 Projeto Relacionado
 
 Frontend do ecossistema:
