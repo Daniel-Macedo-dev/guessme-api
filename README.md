@@ -365,16 +365,36 @@ Este projeto foi desenvolvido com foco em:
 O endpoint `GET /api/game/health` retorna `{"status":"ok"}` com HTTP 200.
 Use-o para verificar se o serviço está operacional.
 
+### Deploy no Render (Web Service)
+
+1. Acesse [render.com](https://render.com) e crie um **Web Service**.
+2. Conecte o repositório `guessme-api` ao GitHub.
+3. Em **Environment**, selecione **Docker** — o Render usará o `Dockerfile` do repositório.
+4. Branch: `main`.
+5. Configure as variáveis de ambiente no painel do Render:
+
+| Variável               | Obrigatório? | Descrição                                            |
+|------------------------|--------------|------------------------------------------------------|
+| `GEMINI_API_KEY`       | Sim          | Chave real da API Gemini                             |
+| `CORS_ALLOWED_ORIGINS` | Sim          | URL real do frontend (ex: `https://meu-app.vercel.app`) |
+| `GEMINI_MODEL`         | Não          | Padrão: `gemini-2.0-flash-lite`                      |
+| `GOOGLE_API_KEY`       | Não          | Ativa busca de imagens de personagens                |
+| `GOOGLE_SEARCH_CX`     | Não          | CX do mecanismo de busca Google                      |
+
+> `PORT` é injetada automaticamente pelo Render — não configure manualmente.
+
+6. **Health check path**: `/api/game/health`
+   O Render aguarda HTTP 200 neste endpoint antes de marcar o serviço como saudável.
+
+> **Limitação de sessões**: as sessões de jogo são armazenadas em memória.
+> Reinicializações ou novas instâncias do serviço encerram todas as sessões ativas.
+
 ### Notas por plataforma
 
-**Railway / Render / Fly.io**
+**Railway / Fly.io / Heroku**
 
 A variável `PORT` é injetada automaticamente — o servidor a lê via `server.port=${PORT:8080}`.
 Configure as demais variáveis de ambiente no painel da plataforma.
-
-**Heroku**
-
-Igual ao Railway: `PORT` é injetado, demais variáveis via `heroku config:set`.
 
 **VPS / servidor próprio**
 
