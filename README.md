@@ -439,6 +439,8 @@ O repositório possui um workflow em `.github/workflows/ci.yml` que executa auto
 - configura Java 21 (Temurin) com cache Maven
 - executa `./mvnw test` a partir do diretório `guessme/`
 - testes passam sem credenciais reais (Gemini e Google são mockados)
+- configura Docker Buildx e valida o build da imagem backend
+- imagens **não são publicadas** em nenhum registry
 
 ---
 
