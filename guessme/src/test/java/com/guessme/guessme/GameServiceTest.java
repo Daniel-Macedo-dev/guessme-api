@@ -1,5 +1,6 @@
 package com.guessme.guessme;
 
+import com.guessme.guessme.config.GameProperties;
 import com.guessme.guessme.config.GeminiConfig;
 import com.guessme.guessme.dto.AIResponse;
 import com.guessme.guessme.model.GameSession;
@@ -38,7 +39,9 @@ class GameServiceTest {
 
     @BeforeEach
     void setUp() {
-        gameService = new GameService(geminiConfig, geminiWebClient, imageSearchService);
+        GameProperties props = new GameProperties();
+        props.setRequestCooldownMs(0); // disable cooldown in tests to allow sequential calls
+        gameService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props);
         ReflectionTestUtils.setField(gameService, "geminiModel", "gemini-2.0-flash-lite");
     }
 

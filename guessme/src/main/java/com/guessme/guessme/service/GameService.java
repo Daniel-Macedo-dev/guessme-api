@@ -1,5 +1,6 @@
 package com.guessme.guessme.service;
 
+import com.guessme.guessme.config.GameProperties;
 import com.guessme.guessme.config.GeminiConfig;
 import com.guessme.guessme.dto.AIResponse;
 import com.guessme.guessme.dto.CharacterData;
@@ -34,12 +35,11 @@ public class GameService {
 
     // Callers that omit sessionId share this fallback (backward compat for local testing).
     static final String DEFAULT_SESSION_ID = "default";
-    private static final int MAX_SESSIONS = 200;
-    private static final long SESSION_TTL_MINUTES = 60;
 
     private final GeminiConfig geminiConfig;
     private final WebClient geminiWebClient;
     private final ImageSearchService imageSearchService;
+    private final GameProperties gameProperties;
 
     @Value("${gemini.model:gemini-2.0-flash-lite}")
     private String geminiModel;
@@ -85,6 +85,12 @@ public class GameService {
         if (question == null || question.isBlank()) {
             return Mono.just(new AIResponse("Pergunta inválida ou vazia.", false, null, sessionId));
         }
+        if (question.length() > gameProperties.getMaxQuestionLength()) {
+            return Mono.just(new AIResponse(
+                    "Pergunta muito longa (máximo " + gameProperties.getMaxQuestionLength() + " caracteres).",
+                    false, null, sessionId
+            ));
+        }
 
         GameSession session = resolveSession(sessionId);
         if (session == null) {
@@ -93,6 +99,22 @@ public class GameService {
                     false, null, sessionId
             ));
         }
+
+        if (!session.tryAcquire(gameProperties.getRequestCooldownMs())) {
+            return Mono.just(new AIResponse(
+                    "Aguarde alguns instantes antes de fazer outra pergunta.",
+                    false, null, resolveId(sessionId)
+            ));
+        }
+
+        if (session.getQuestionCount() >= gameProperties.getMaxQuestionsPerSession()) {
+            return Mono.just(new AIResponse(
+                    "Limite de perguntas atingido para esta sessão. Inicie um novo jogo com POST /api/game/start.",
+                    false, null, resolveId(sessionId)
+            ));
+        }
+
+        session.incrementQuestionCount();
 
         String key = geminiConfig.getGeminiApiKey();
         if (key == null || key.isBlank()) {
@@ -174,6 +196,22 @@ public class GameService {
             ));
         }
 
+        if (!session.tryAcquire(gameProperties.getRequestCooldownMs())) {
+            return Mono.just(new AIResponse(
+                    "Aguarde alguns instantes antes de pedir uma dica.",
+                    false, null, resolveId(sessionId)
+            ));
+        }
+
+        if (session.getHintCount() >= gameProperties.getMaxHintsPerSession()) {
+            return Mono.just(new AIResponse(
+                    "Limite de dicas atingido para esta sessão. Inicie um novo jogo com POST /api/game/start.",
+                    false, null, resolveId(sessionId)
+            ));
+        }
+
+        session.incrementHintCount();
+
         String key = geminiConfig.getGeminiApiKey();
         if (key == null || key.isBlank()) {
             return Mono.just(new AIResponse(
@@ -254,8 +292,8 @@ public class GameService {
     }
 
     private void evictIfNeeded() {
-        if (sessions.size() < MAX_SESSIONS) return;
-        Instant cutoff = Instant.now().minus(SESSION_TTL_MINUTES, ChronoUnit.MINUTES);
+        if (sessions.size() < gameProperties.getMaxSessions()) return;
+        Instant cutoff = Instant.now().minus(gameProperties.getSessionTtlMinutes(), ChronoUnit.MINUTES);
         sessions.entrySet().removeIf(e ->
                 !e.getKey().equals(DEFAULT_SESSION_ID)
                         && e.getValue().getLastAccess().isBefore(cutoff)
