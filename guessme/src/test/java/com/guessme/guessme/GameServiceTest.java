@@ -364,6 +364,197 @@ class GameServiceTest {
                 "hint with blank sessionId must resolve to the default session, not session-not-found");
     }
 
+    // --- overlong question ---
+
+    @Test
+    void askAI_overlongQuestion_returnsValidationError() {
+        AIResponse start = gameService.startGame(null).block();
+        assertNotNull(start);
+
+        String longQuestion = "x".repeat(301); // exceeds default maxQuestionLength of 300
+        AIResponse result = gameService.askAI(longQuestion, start.sessionId()).block();
+
+        assertNotNull(result);
+        assertFalse(result.success());
+        assertTrue(result.answer().contains("300") || result.answer().toLowerCase().contains("longa"),
+                "Answer should mention the question is too long");
+    }
+
+    @Test
+    void askAI_questionAtExactLimit_isAccepted() {
+        AIResponse start = gameService.startGame(null).block();
+        assertNotNull(start);
+
+        when(geminiConfig.getGeminiApiKey()).thenReturn("");
+
+        String exactQuestion = "x".repeat(300); // exactly at limit — must not be rejected by length guard
+        AIResponse result = gameService.askAI(exactQuestion, start.sessionId()).block();
+
+        assertNotNull(result);
+        // Reaches the key check (config error), which means the length guard passed
+        assertTrue(result.answer().contains("gemini.api.key"),
+                "Question at exact limit should pass length check and reach key validation");
+    }
+
+    // --- max questions per session ---
+
+    @Test
+    void askAI_maxQuestionsReached_returnsLimitError() {
+        GameProperties props = new GameProperties();
+        props.setMaxQuestionsPerSession(3);
+        props.setRequestCooldownMs(0);
+        GameService limitedService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props);
+        ReflectionTestUtils.setField(limitedService, "geminiModel", "gemini-2.0-flash-lite");
+
+        AIResponse start = limitedService.startGame(null).block();
+        assertNotNull(start);
+        String sessionId = start.sessionId();
+
+        when(geminiConfig.getGeminiApiKey()).thenReturn("");
+        // Consume all 3 allowed questions
+        for (int i = 0; i < 3; i++) {
+            limitedService.askAI("question " + i, sessionId).block();
+        }
+
+        AIResponse result = limitedService.askAI("one more", sessionId).block();
+
+        assertNotNull(result);
+        assertFalse(result.success());
+        assertTrue(result.answer().toLowerCase().contains("limite"),
+                "Should return limit error after max questions reached");
+    }
+
+    @Test
+    void askAI_questionCountIncrements_andSessionIdPreserved() {
+        GameProperties props = new GameProperties();
+        props.setMaxQuestionsPerSession(2);
+        props.setRequestCooldownMs(0);
+        GameService limitedService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props);
+        ReflectionTestUtils.setField(limitedService, "geminiModel", "gemini-2.0-flash-lite");
+
+        AIResponse start = limitedService.startGame(null).block();
+        assertNotNull(start);
+        String sessionId = start.sessionId();
+
+        when(geminiConfig.getGeminiApiKey()).thenReturn("");
+        limitedService.askAI("q1", sessionId).block();
+        limitedService.askAI("q2", sessionId).block();
+
+        AIResponse blocked = limitedService.askAI("q3", sessionId).block();
+
+        assertNotNull(blocked);
+        assertFalse(blocked.success());
+        assertEquals(sessionId, blocked.sessionId(), "sessionId must be preserved in limit error");
+    }
+
+    // --- max hints per session ---
+
+    @Test
+    void hint_maxHintsReached_returnsLimitError() {
+        GameProperties props = new GameProperties();
+        props.setMaxHintsPerSession(2);
+        props.setRequestCooldownMs(0);
+        GameService limitedService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props);
+        ReflectionTestUtils.setField(limitedService, "geminiModel", "gemini-2.0-flash-lite");
+
+        AIResponse start = limitedService.startGame(null).block();
+        assertNotNull(start);
+        String sessionId = start.sessionId();
+
+        when(geminiConfig.getGeminiApiKey()).thenReturn("");
+        limitedService.hint(sessionId).block();
+        limitedService.hint(sessionId).block();
+
+        AIResponse result = limitedService.hint(sessionId).block();
+
+        assertNotNull(result);
+        assertFalse(result.success());
+        assertTrue(result.answer().toLowerCase().contains("limite"),
+                "Should return limit error after max hints reached");
+    }
+
+    // --- per-session cooldown ---
+
+    @Test
+    void askAI_cooldownActive_returnsThrottleMessage() {
+        GameProperties props = new GameProperties();
+        props.setRequestCooldownMs(60_000L); // 60 s — effectively infinite during the test
+        props.setMaxQuestionsPerSession(50);
+        GameService throttledService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props);
+        ReflectionTestUtils.setField(throttledService, "geminiModel", "gemini-2.0-flash-lite");
+
+        AIResponse start = throttledService.startGame(null).block();
+        assertNotNull(start);
+        String sessionId = start.sessionId();
+
+        when(geminiConfig.getGeminiApiKey()).thenReturn("");
+
+        // First call: passes cooldown (lastRequestAt was null) → reaches key check
+        AIResponse first = throttledService.askAI("É humano?", sessionId).block();
+        assertNotNull(first);
+        assertTrue(first.answer().contains("gemini.api.key"),
+                "First call should reach key check, not be throttled");
+
+        // Second call immediately: cooldown still active
+        AIResponse second = throttledService.askAI("É humano?", sessionId).block();
+        assertNotNull(second);
+        assertFalse(second.success());
+        assertTrue(second.answer().toLowerCase().contains("aguard"),
+                "Second immediate call should be throttled");
+    }
+
+    @Test
+    void hint_cooldownActive_returnsThrottleMessage() {
+        GameProperties props = new GameProperties();
+        props.setRequestCooldownMs(60_000L);
+        props.setMaxHintsPerSession(10);
+        GameService throttledService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props);
+        ReflectionTestUtils.setField(throttledService, "geminiModel", "gemini-2.0-flash-lite");
+
+        AIResponse start = throttledService.startGame(null).block();
+        assertNotNull(start);
+        String sessionId = start.sessionId();
+
+        when(geminiConfig.getGeminiApiKey()).thenReturn("");
+
+        AIResponse first = throttledService.hint(sessionId).block();
+        assertNotNull(first);
+        assertTrue(first.answer().contains("gemini.api.key"),
+                "First hint should reach key check, not be throttled");
+
+        AIResponse second = throttledService.hint(sessionId).block();
+        assertNotNull(second);
+        assertFalse(second.success());
+        assertTrue(second.answer().toLowerCase().contains("aguard"),
+                "Second immediate hint should be throttled");
+    }
+
+    @Test
+    void askAndHint_shareTheSameCooldownTimer() {
+        GameProperties props = new GameProperties();
+        props.setRequestCooldownMs(60_000L);
+        props.setMaxQuestionsPerSession(50);
+        props.setMaxHintsPerSession(10);
+        GameService throttledService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props);
+        ReflectionTestUtils.setField(throttledService, "geminiModel", "gemini-2.0-flash-lite");
+
+        AIResponse start = throttledService.startGame(null).block();
+        assertNotNull(start);
+        String sessionId = start.sessionId();
+
+        when(geminiConfig.getGeminiApiKey()).thenReturn("");
+
+        // Ask consumes the cooldown slot
+        throttledService.askAI("É humano?", sessionId).block();
+
+        // Hint immediately after should also be throttled (shared cooldown)
+        AIResponse hintResult = throttledService.hint(sessionId).block();
+        assertNotNull(hintResult);
+        assertFalse(hintResult.success());
+        assertTrue(hintResult.answer().toLowerCase().contains("aguard"),
+                "Hint after ask should share the cooldown timer");
+    }
+
     // --- session eviction ---
 
     @Test
