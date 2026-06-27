@@ -47,6 +47,17 @@ class GameControllerTest {
         assertEquals("gemini-2.0-flash-lite", model);
     }
 
+    // ── GET /api/game/health ────────────────────────────────────────────────
+
+    @Test
+    void health_returns200WithStatusOk() {
+        webTestClient.get().uri("/api/game/health")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.status").isEqualTo("ok");
+    }
+
     // ── GET /api/game/categories ────────────────────────────────────────────
 
     @Test
@@ -149,6 +160,37 @@ class GameControllerTest {
                 .expectBody()
                 .jsonPath("$.success").isEqualTo(false)
                 .jsonPath("$.answer").isNotEmpty();
+    }
+
+    @Test
+    void ask_overlongQuestion_returnsValidationErrorAndPreservesSessionId() {
+        // 301 characters exceeds the configured game.max-question-length=300
+        String longQuestion = "x".repeat(301);
+        webTestClient.post().uri("/api/game/ask")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"question\":\"" + longQuestion + "\",\"sessionId\":\"sess-abc\"}")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.success").isEqualTo(false)
+                .jsonPath("$.answer").isNotEmpty()
+                .jsonPath("$.sessionId").isEqualTo("sess-abc");
+    }
+
+    @Test
+    void ask_questionAtExactLimit_delegatesToService() {
+        String exactQuestion = "x".repeat(300); // exactly at limit — controller must not reject it
+        AIResponse stub = new AIResponse("Não", false, null, "sess-abc");
+        when(gameService.askAI(exactQuestion, "sess-abc")).thenReturn(Mono.just(stub));
+
+        webTestClient.post().uri("/api/game/ask")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"question\":\"" + exactQuestion + "\",\"sessionId\":\"sess-abc\"}")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.success").isEqualTo(false)
+                .jsonPath("$.answer").isEqualTo("Não");
     }
 
     @Test
