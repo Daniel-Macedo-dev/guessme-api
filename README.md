@@ -169,9 +169,28 @@ Resposta:
   "answer": "Sim",
   "success": false,
   "character": null,
-  "sessionId": "3f2a1b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c"
+  "sessionId": "3f2a1b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c",
+  "verdict": "YES"
 }
 ```
+
+#### Campo `verdict` (contrato estruturado)
+
+O campo `verdict` classifica a resposta da IA de forma estruturada, independente do texto de `answer`.
+
+| Valor | Significado | Texto de `answer` típico |
+|-------|-------------|--------------------------|
+| `YES` | Confirmado | Começa com "Sim" |
+| `NO` | Refutado | Começa com "Não" |
+| `MAYBE` | Inconclusivo | Começa com "Talvez" |
+| `UNKNOWN` | Não aplicável ou erro | Erros, limites, dicas, boot |
+
+**Regras:**
+- `/api/game/ask` retorna `verdict` classificado pela IA para respostas normais de jogo.
+- `/api/game/hint` sempre retorna `verdict: UNKNOWN` — dicas são intel, não evidências de Sim/Não/Talvez.
+- `/api/game/start` e mensagens de erro sempre retornam `verdict: UNKNOWN`.
+- O campo `answer` continua presente em todas as respostas — o frontend pode exibi-lo diretamente.
+- O campo `verdict` é o caminho primário para classificação de evidências; `answer` é o fallback legado.
 
 ### 3. Pedir dica → enviar o `sessionId`
 
@@ -190,7 +209,8 @@ Resposta:
   "answer": "Este personagem é conhecido por sua habilidade com espadas.",
   "success": false,
   "character": null,
-  "sessionId": "3f2a1b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c"
+  "sessionId": "3f2a1b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c",
+  "verdict": "UNKNOWN"
 }
 ```
 
@@ -207,7 +227,8 @@ Quando o jogador acerta, `success` é `true` e `character` contém os dados do p
     "work": "Naruto",
     "image": "https://upload.wikimedia.org/..."
   },
-  "sessionId": "3f2a1b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c"
+  "sessionId": "3f2a1b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c",
+  "verdict": "YES"
 }
 ```
 
@@ -366,7 +387,7 @@ Quando um limite é atingido, a API retorna HTTP 200 com `"success": false` e um
 * ✅ Integração com Gemini implementada
 * ✅ Suporte a categorias
 * ✅ Geração de dicas
-* ✅ Retorno estruturado com DTOs
+* ✅ Retorno estruturado com DTOs e campo `verdict` classificado
 * ✅ Busca de imagem para exibição no frontend
 * ✅ Gerenciamento de sessão por `sessionId`
 * ✅ Testes locais e determinísticos (`mvn test` não requer credenciais)
@@ -533,7 +554,7 @@ npm run dev
 |---|---|---|
 | Backend ativo | `GET /api/game/health` | `{"status":"ok"}` |
 | Categorias carregadas | `GET /api/game/categories` | Array com 6 categorias |
-| Início de sessão | `POST /api/game/start` | `answer` + `sessionId` |
+| Início de sessão | `POST /api/game/start` | `answer` + `sessionId` + `verdict: "UNKNOWN"` |
 | CORS do frontend | `POST /api/game/start` com `Origin: http://localhost:5173` | `Access-Control-Allow-Origin` no response |
 | Pergunta muito longa | 301+ chars via frontend ou API | Aviso amber no frontend, `sessionId` preservado |
 | Cooldown | Dois requests em < 3s na mesma sessão | Aviso amber "Aguarde…" |
