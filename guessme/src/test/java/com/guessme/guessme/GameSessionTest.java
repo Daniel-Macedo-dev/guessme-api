@@ -104,4 +104,84 @@ class GameSessionTest {
 
         assertEquals("Anime", session.getCurrentCategory());
     }
+
+    // ── questionCount ──────────────────────────────────────────────────────
+
+    @Test
+    void questionCount_startsAtZero() {
+        GameSession session = new GameSession();
+
+        assertEquals(0, session.getQuestionCount());
+    }
+
+    @Test
+    void incrementQuestionCount_returnsNewValueAndPersists() {
+        GameSession session = new GameSession();
+
+        int first = session.incrementQuestionCount();
+        int second = session.incrementQuestionCount();
+        int third = session.incrementQuestionCount();
+
+        assertEquals(1, first);
+        assertEquals(2, second);
+        assertEquals(3, third);
+        assertEquals(3, session.getQuestionCount());
+    }
+
+    // ── hintCount ─────────────────────────────────────────────────────────
+
+    @Test
+    void hintCount_startsAtZero() {
+        GameSession session = new GameSession();
+
+        assertEquals(0, session.getHintCount());
+    }
+
+    @Test
+    void incrementHintCount_returnsNewValueAndPersists() {
+        GameSession session = new GameSession();
+
+        int first = session.incrementHintCount();
+        int second = session.incrementHintCount();
+
+        assertEquals(1, first);
+        assertEquals(2, second);
+        assertEquals(2, session.getHintCount());
+    }
+
+    // ── tryAcquire (cooldown gate) ─────────────────────────────────────────
+
+    @Test
+    void tryAcquire_zeroCooldown_alwaysReturnsTrue() {
+        GameSession session = new GameSession();
+
+        assertTrue(session.tryAcquire(0));
+        assertTrue(session.tryAcquire(0));
+        assertTrue(session.tryAcquire(0));
+    }
+
+    @Test
+    void tryAcquire_firstCall_returnsTrue() {
+        GameSession session = new GameSession();
+
+        assertTrue(session.tryAcquire(60_000L));
+    }
+
+    @Test
+    void tryAcquire_immediateSecondCall_returnsFalse() {
+        GameSession session = new GameSession();
+
+        session.tryAcquire(60_000L); // first — acquires the lock
+        boolean second = session.tryAcquire(60_000L);
+
+        assertFalse(second, "Second immediate call must be denied while cooldown is active");
+    }
+
+    @Test
+    void tryAcquire_negativeCooldown_alwaysReturnsTrue() {
+        GameSession session = new GameSession();
+
+        assertTrue(session.tryAcquire(-1));
+        assertTrue(session.tryAcquire(-1));
+    }
 }
