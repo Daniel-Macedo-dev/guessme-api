@@ -1,5 +1,6 @@
 package com.guessme.guessme.controller;
 
+import com.guessme.guessme.config.GameProperties;
 import com.guessme.guessme.dto.AIResponse;
 import com.guessme.guessme.dto.HintDTO;
 import com.guessme.guessme.dto.QuestionDTO;
@@ -32,6 +33,7 @@ import java.util.Map;
 public class GameController {
 
     private final GameService gameService;
+    private final GameProperties gameProperties;
 
     @GetMapping("/categories")
     public List<String> categories() {
@@ -57,10 +59,14 @@ public class GameController {
     @PostMapping("/ask")
     public Mono<AIResponse> askAI(@RequestBody(required = false) QuestionDTO dto) {
         if (dto == null || dto.question() == null || dto.question().isBlank()) {
-            return Mono.just(new AIResponse("Pergunta inválida ou vazia.", false, null, null));
+            String sid = (dto != null) ? dto.sessionId() : null;
+            return Mono.just(new AIResponse("Pergunta inválida ou vazia.", false, null, sid));
         }
-        if (dto.question().length() > 300) {
-            return Mono.just(new AIResponse("Pergunta muito longa (máximo 300 caracteres).", false, null, null));
+        if (dto.question().length() > gameProperties.getMaxQuestionLength()) {
+            return Mono.just(new AIResponse(
+                    "Pergunta muito longa (máximo " + gameProperties.getMaxQuestionLength() + " caracteres).",
+                    false, null, dto.sessionId()
+            ));
         }
         return gameService.askAI(dto.question(), dto.sessionId());
     }
