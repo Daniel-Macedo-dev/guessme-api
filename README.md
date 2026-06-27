@@ -502,11 +502,57 @@ O repositório possui um workflow em `.github/workflows/ci.yml` que executa auto
 
 ---
 
-## 🔗 Projeto Relacionado
+## 🔗 Integração Full-Stack
 
-Frontend do ecossistema:
+**Frontend do ecossistema:** [Daniel-Macedo-dev/GuessMe](https://github.com/Daniel-Macedo-dev/GuessMe)
 
-* **GuessMe** — interface web responsável pela interação do usuário com a API
+### Rodando localmente (backend + frontend simultaneamente)
+
+**Terminal 1 — backend:**
+
+```powershell
+cd guessme-api/guessme
+.\mvnw.cmd spring-boot:run
+# → http://localhost:8080
+```
+
+**Terminal 2 — frontend:**
+
+```bash
+cd GuessMe/guessme
+npm install
+npm run dev
+# → http://localhost:5173
+```
+
+> CORS padrão já aceita `http://localhost:5173`. Nenhuma configuração adicional é necessária para desenvolvimento local.
+
+### Smoke checklist full-stack (local)
+
+| Verificação | Endpoint / Ação | Resultado esperado |
+|---|---|---|
+| Backend ativo | `GET /api/game/health` | `{"status":"ok"}` |
+| Categorias carregadas | `GET /api/game/categories` | Array com 6 categorias |
+| Início de sessão | `POST /api/game/start` | `answer` + `sessionId` |
+| CORS do frontend | `POST /api/game/start` com `Origin: http://localhost:5173` | `Access-Control-Allow-Origin` no response |
+| Pergunta muito longa | 301+ chars via frontend ou API | Aviso amber no frontend, `sessionId` preservado |
+| Cooldown | Dois requests em < 3s na mesma sessão | Aviso amber "Aguarde…" |
+| Sessão inválida | `POST /api/game/ask` com `sessionId` inexistente | Box de erro vermelho + botão "Novo caso" |
+| Gemini sem chave | `/ask` ou `/hint` sem `GEMINI_API_KEY` | Box de erro vermelho com prefixo `Config inválida:` |
+| Gemini com chave inválida | `/ask` ou `/hint` com chave errada | Box de erro vermelho com prefixo `Erro da API Gemini` |
+
+### Como o frontend trata os erros do backend
+
+O frontend classifica cada `answer` da API em uma de quatro categorias:
+
+| Categoria | Prefixo do `answer` | Comportamento no frontend |
+|---|---|---|
+| `stale-session` | `Sessão não encontrada` | Box de erro vermelho + botão "Novo caso" |
+| `system-error` | `Config inválida`, `Erro da API Gemini`, `Erro inesperado`, `Resposta vazia`, `Resposta inválida`, `Pergunta inválida` | Box de erro vermelho |
+| `user-limit` | `Aguarde`, `Limite`, `Pergunta muito longa` | Box de aviso âmbar; pergunta rejeitada não é contada |
+| `game` | qualquer outro texto | Bolha de chat normal (resposta da IA) |
+
+> Todos os erros retornam HTTP 200 com `"success": false`. Nunca retornam 4xx/5xx do ponto de vista do frontend, exceto por falhas de rede.
 
 ---
 
