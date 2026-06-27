@@ -72,6 +72,7 @@ A chave é carregada por configuração externa via `gemini.properties`, e a apl
 
 | Método | Endpoint | Descrição |
 |--------|----------|-----------|
+| GET | `/api/game/health` | Retorna `{"status":"ok"}` — usado por health checks |
 | GET | `/api/game/categories` | Lista as categorias disponíveis |
 | GET | `/api/game/start` | Inicia uma nova partida com categoria opcional via query param |
 | POST | `/api/game/start` | Inicia uma nova partida via body JSON |
@@ -319,6 +320,43 @@ cors.allowed-origins=http://localhost:5173,https://seu-dominio.com
 ```
 
 Ou defina a variável `CORS_ALLOWED_ORIGINS`.
+
+---
+
+## ⚙️ Configuração de Limites
+
+Todas as propriedades abaixo são controladas pelo prefixo `game.*` em `application.properties` e podem ser sobrescritas por variáveis de ambiente (Spring relaxed binding, ex: `GAME_MAX_SESSIONS`).
+
+| Propriedade | Padrão | Descrição |
+|---|---|---|
+| `game.max-question-length` | `300` | Tamanho máximo de uma pergunta (caracteres) |
+| `game.max-sessions` | `200` | Número máximo de sessões mantidas em memória |
+| `game.session-ttl-minutes` | `60` | Tempo sem atividade (minutos) antes de uma sessão ser elegível para evicção |
+| `game.max-questions-per-session` | `50` | Limite de perguntas por sessão |
+| `game.max-hints-per-session` | `10` | Limite de dicas por sessão |
+| `game.request-cooldown-ms` | `3000` | Cooldown entre requisições consecutivas na mesma sessão (ms) |
+
+### Erros de limite retornados
+
+Quando um limite é atingido, a API retorna HTTP 200 com `"success": false` e uma mensagem descritiva:
+
+| Situação | Mensagem retornada |
+|---|---|
+| Pergunta em branco | `Pergunta inválida ou vazia.` |
+| Pergunta muito longa | `Pergunta muito longa (máximo 300 caracteres).` |
+| Sessão não encontrada | `Sessão não encontrada. Inicie um novo jogo com POST /api/game/start.` |
+| Cooldown ativo (ask) | `Aguarde alguns instantes antes de fazer outra pergunta.` |
+| Cooldown ativo (hint) | `Aguarde alguns instantes antes de pedir uma dica.` |
+| Limite de perguntas | `Limite de perguntas atingido para esta sessão. Inicie um novo jogo com POST /api/game/start.` |
+| Limite de dicas | `Limite de dicas atingido para esta sessão. Inicie um novo jogo com POST /api/game/start.` |
+
+### Limitações de produção
+
+> **Proteção por instância**: os contadores de sessão, cooldown e limites de perguntas/dicas são armazenados em memória. Em implantações com múltiplas instâncias ou atrás de um balanceador de carga, cada instância mantém seu próprio estado — um usuário pode contornar o cooldown se as requisições caírem em instâncias diferentes. Para proteção distribuída, utilize um API Gateway ou Redis.
+
+> **Reinicializações**: todas as sessões ativas são perdidas quando o processo reinicia. Isso inclui deploys no Render Free que entra em hibernação.
+
+> **Sessão padrão**: omitir `sessionId` nas chamadas de `/ask` e `/hint` roteia para uma sessão compartilhada (`"default"`). Isso existe apenas para compatibilidade com testes locais; **não use em produção**.
 
 ---
 
