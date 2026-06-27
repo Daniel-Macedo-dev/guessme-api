@@ -2,6 +2,7 @@ package com.guessme.guessme;
 
 import com.guessme.guessme.dto.AIResponse;
 import com.guessme.guessme.dto.CharacterData;
+import com.guessme.guessme.model.AnswerVerdict;
 import com.guessme.guessme.service.GameService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -79,7 +80,7 @@ class GameControllerTest {
 
     @Test
     void getStart_noCategory_returnsAIResponseWithSessionId() {
-        AIResponse stub = new AIResponse("Pronto! Pode perguntar.", false, null, "sess-abc");
+        AIResponse stub = new AIResponse("Pronto! Pode perguntar.", false, null, "sess-abc", AnswerVerdict.UNKNOWN);
         when(gameService.startGame(null)).thenReturn(Mono.just(stub));
 
         webTestClient.get().uri("/api/game/start")
@@ -94,7 +95,7 @@ class GameControllerTest {
 
     @Test
     void getStart_withCategoryParam_forwardsToService() {
-        AIResponse stub = new AIResponse("Anime escolhido.", false, null, "sess-anime");
+        AIResponse stub = new AIResponse("Anime escolhido.", false, null, "sess-anime", AnswerVerdict.UNKNOWN);
         when(gameService.startGame("Anime")).thenReturn(Mono.just(stub));
 
         webTestClient.get().uri("/api/game/start?category=Anime")
@@ -108,7 +109,7 @@ class GameControllerTest {
 
     @Test
     void postStart_withCategoryBody_returnsSessionId() {
-        AIResponse stub = new AIResponse("Games escolhido.", false, null, "sess-games");
+        AIResponse stub = new AIResponse("Games escolhido.", false, null, "sess-games", AnswerVerdict.UNKNOWN);
         when(gameService.startGame("Games")).thenReturn(Mono.just(stub));
 
         webTestClient.post().uri("/api/game/start")
@@ -123,7 +124,7 @@ class GameControllerTest {
 
     @Test
     void postStart_noBody_usesNullCategory() {
-        AIResponse stub = new AIResponse("Geral.", false, null, "sess-geral");
+        AIResponse stub = new AIResponse("Geral.", false, null, "sess-geral", AnswerVerdict.UNKNOWN);
         when(gameService.startGame(null)).thenReturn(Mono.just(stub));
 
         webTestClient.post().uri("/api/game/start")
@@ -180,7 +181,7 @@ class GameControllerTest {
     @Test
     void ask_questionAtExactLimit_delegatesToService() {
         String exactQuestion = "x".repeat(300); // exactly at limit — controller must not reject it
-        AIResponse stub = new AIResponse("Não", false, null, "sess-abc");
+        AIResponse stub = new AIResponse("Não", false, null, "sess-abc", AnswerVerdict.NO);
         when(gameService.askAI(exactQuestion, "sess-abc")).thenReturn(Mono.just(stub));
 
         webTestClient.post().uri("/api/game/ask")
@@ -195,7 +196,7 @@ class GameControllerTest {
 
     @Test
     void ask_validQuestion_delegatesToService() {
-        AIResponse stub = new AIResponse("Não", false, null, "sess-abc");
+        AIResponse stub = new AIResponse("Não", false, null, "sess-abc", AnswerVerdict.NO);
         when(gameService.askAI("É humano?", "sess-abc")).thenReturn(Mono.just(stub));
 
         webTestClient.post().uri("/api/game/ask")
@@ -213,7 +214,7 @@ class GameControllerTest {
         CharacterData character = new CharacterData(
                 "Naruto Uzumaki", "Naruto", "https://img.example.com/naruto.jpg");
         AIResponse stub = new AIResponse(
-                "Sim! O personagem é Naruto Uzumaki.\nObra: Naruto", true, character, "sess-abc");
+                "Sim! O personagem é Naruto Uzumaki.\nObra: Naruto", true, character, "sess-abc", AnswerVerdict.YES);
         when(gameService.askAI("É o Naruto?", "sess-abc")).thenReturn(Mono.just(stub));
 
         webTestClient.post().uri("/api/game/ask")
@@ -232,7 +233,7 @@ class GameControllerTest {
 
     @Test
     void hint_withSessionId_delegatesToService() {
-        AIResponse stub = new AIResponse("Este personagem usa uma armadura.", false, null, "sess-abc");
+        AIResponse stub = new AIResponse("Este personagem usa uma armadura.", false, null, "sess-abc", AnswerVerdict.UNKNOWN);
         when(gameService.hint("sess-abc")).thenReturn(Mono.just(stub));
 
         webTestClient.post().uri("/api/game/hint")
@@ -248,7 +249,7 @@ class GameControllerTest {
     @Test
     void hint_noSessionId_delegatesToServiceWithNull() {
         // Body {} → HintDTO(sessionId=null) → service.hint(null) for backward-compat path
-        AIResponse stub = new AIResponse("Dica geral.", false, null, "default");
+        AIResponse stub = new AIResponse("Dica geral.", false, null, "default", AnswerVerdict.UNKNOWN);
         when(gameService.hint(null)).thenReturn(Mono.just(stub));
 
         webTestClient.post().uri("/api/game/hint")

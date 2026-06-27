@@ -3,9 +3,11 @@ package com.guessme.guessme;
 import com.guessme.guessme.config.GameProperties;
 import com.guessme.guessme.config.GeminiConfig;
 import com.guessme.guessme.dto.AIResponse;
+import com.guessme.guessme.model.AnswerVerdict;
 import com.guessme.guessme.model.GameSession;
 import com.guessme.guessme.service.GameService;
 import com.guessme.guessme.service.ImageSearchService;
+import com.guessme.guessme.service.VerdictParser;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,12 +38,14 @@ class GameServiceTest {
     @Mock private ImageSearchService imageSearchService;
 
     private GameService gameService;
+    // VerdictParser is a pure function with no I/O — use a real instance in tests.
+    private final VerdictParser verdictParser = new VerdictParser();
 
     @BeforeEach
     void setUp() {
         GameProperties props = new GameProperties();
         props.setRequestCooldownMs(0); // disable cooldown in tests to allow sequential calls
-        gameService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props);
+        gameService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props, verdictParser);
         ReflectionTestUtils.setField(gameService, "geminiModel", "gemini-2.0-flash-lite");
     }
 
@@ -403,7 +407,7 @@ class GameServiceTest {
         GameProperties props = new GameProperties();
         props.setMaxQuestionsPerSession(3);
         props.setRequestCooldownMs(0);
-        GameService limitedService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props);
+        GameService limitedService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props, verdictParser);
         ReflectionTestUtils.setField(limitedService, "geminiModel", "gemini-2.0-flash-lite");
 
         AIResponse start = limitedService.startGame(null).block();
@@ -429,7 +433,7 @@ class GameServiceTest {
         GameProperties props = new GameProperties();
         props.setMaxQuestionsPerSession(2);
         props.setRequestCooldownMs(0);
-        GameService limitedService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props);
+        GameService limitedService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props, verdictParser);
         ReflectionTestUtils.setField(limitedService, "geminiModel", "gemini-2.0-flash-lite");
 
         AIResponse start = limitedService.startGame(null).block();
@@ -454,7 +458,7 @@ class GameServiceTest {
         GameProperties props = new GameProperties();
         props.setMaxHintsPerSession(2);
         props.setRequestCooldownMs(0);
-        GameService limitedService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props);
+        GameService limitedService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props, verdictParser);
         ReflectionTestUtils.setField(limitedService, "geminiModel", "gemini-2.0-flash-lite");
 
         AIResponse start = limitedService.startGame(null).block();
@@ -480,7 +484,7 @@ class GameServiceTest {
         GameProperties props = new GameProperties();
         props.setRequestCooldownMs(60_000L); // 60 s — effectively infinite during the test
         props.setMaxQuestionsPerSession(50);
-        GameService throttledService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props);
+        GameService throttledService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props, verdictParser);
         ReflectionTestUtils.setField(throttledService, "geminiModel", "gemini-2.0-flash-lite");
 
         AIResponse start = throttledService.startGame(null).block();
@@ -508,7 +512,7 @@ class GameServiceTest {
         GameProperties props = new GameProperties();
         props.setRequestCooldownMs(60_000L);
         props.setMaxHintsPerSession(10);
-        GameService throttledService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props);
+        GameService throttledService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props, verdictParser);
         ReflectionTestUtils.setField(throttledService, "geminiModel", "gemini-2.0-flash-lite");
 
         AIResponse start = throttledService.startGame(null).block();
@@ -535,7 +539,7 @@ class GameServiceTest {
         props.setRequestCooldownMs(60_000L);
         props.setMaxQuestionsPerSession(50);
         props.setMaxHintsPerSession(10);
-        GameService throttledService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props);
+        GameService throttledService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props, verdictParser);
         ReflectionTestUtils.setField(throttledService, "geminiModel", "gemini-2.0-flash-lite");
 
         AIResponse start = throttledService.startGame(null).block();

@@ -4,6 +4,7 @@ import com.guessme.guessme.config.GameProperties;
 import com.guessme.guessme.config.GeminiConfig;
 import com.guessme.guessme.dto.AIResponse;
 import com.guessme.guessme.dto.CharacterData;
+import com.guessme.guessme.model.AnswerVerdict;
 import com.guessme.guessme.model.GameSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -40,6 +41,7 @@ public class GameService {
     private final WebClient geminiWebClient;
     private final ImageSearchService imageSearchService;
     private final GameProperties gameProperties;
+    private final VerdictParser verdictParser;
 
     @Value("${gemini.model:gemini-2.0-flash-lite}")
     private String geminiModel;
@@ -73,7 +75,7 @@ public class GameService {
         evictIfNeeded();
         sessions.put(sessionId, session);
 
-        return Mono.just(new AIResponse(text, false, null, sessionId));
+        return Mono.just(new AIResponse(text, false, null, sessionId, AnswerVerdict.UNKNOWN));
     }
 
     // Backward-compatible single-arg variant; routes to the default session.
@@ -83,12 +85,12 @@ public class GameService {
 
     public Mono<AIResponse> askAI(String question, String sessionId) {
         if (question == null || question.isBlank()) {
-            return Mono.just(new AIResponse("Pergunta inválida ou vazia.", false, null, sessionId));
+            return Mono.just(new AIResponse("Pergunta inválida ou vazia.", false, null, sessionId, AnswerVerdict.UNKNOWN));
         }
         if (question.length() > gameProperties.getMaxQuestionLength()) {
             return Mono.just(new AIResponse(
                     "Pergunta muito longa (máximo " + gameProperties.getMaxQuestionLength() + " caracteres).",
-                    false, null, sessionId
+                    false, null, sessionId, AnswerVerdict.UNKNOWN
             ));
         }
 
@@ -96,21 +98,21 @@ public class GameService {
         if (session == null) {
             return Mono.just(new AIResponse(
                     "Sessão não encontrada. Inicie um novo jogo com POST /api/game/start.",
-                    false, null, sessionId
+                    false, null, sessionId, AnswerVerdict.UNKNOWN
             ));
         }
 
         if (!session.tryAcquire(gameProperties.getRequestCooldownMs())) {
             return Mono.just(new AIResponse(
                     "Aguarde alguns instantes antes de fazer outra pergunta.",
-                    false, null, resolveId(sessionId)
+                    false, null, resolveId(sessionId), AnswerVerdict.UNKNOWN
             ));
         }
 
         if (session.getQuestionCount() >= gameProperties.getMaxQuestionsPerSession()) {
             return Mono.just(new AIResponse(
                     "Limite de perguntas atingido para esta sessão. Inicie um novo jogo com POST /api/game/start.",
-                    false, null, resolveId(sessionId)
+                    false, null, resolveId(sessionId), AnswerVerdict.UNKNOWN
             ));
         }
 
@@ -120,7 +122,7 @@ public class GameService {
         if (key == null || key.isBlank()) {
             return Mono.just(new AIResponse(
                     "Config inválida: gemini.api.key não foi carregada (gemini.properties).",
-                    false, null, sessionId
+                    false, null, sessionId, AnswerVerdict.UNKNOWN
             ));
         }
 
@@ -174,11 +176,11 @@ public class GameService {
                     if (details == null || details.isBlank()) details = ex.getMessage();
                     return Mono.just(new AIResponse(
                             "Erro da API Gemini (" + ex.getStatusCode().value() + "): " + details,
-                            false, null, resolvedId
+                            false, null, resolvedId, AnswerVerdict.UNKNOWN
                     ));
                 })
                 .onErrorResume(Throwable.class, ex ->
-                        Mono.just(new AIResponse("Erro inesperado: " + ex.getMessage(), false, null, resolvedId))
+                        Mono.just(new AIResponse("Erro inesperado: " + ex.getMessage(), false, null, resolvedId, AnswerVerdict.UNKNOWN))
                 );
     }
 
@@ -192,21 +194,21 @@ public class GameService {
         if (session == null) {
             return Mono.just(new AIResponse(
                     "Sessão não encontrada. Inicie um novo jogo com POST /api/game/start.",
-                    false, null, sessionId
+                    false, null, sessionId, AnswerVerdict.UNKNOWN
             ));
         }
 
         if (!session.tryAcquire(gameProperties.getRequestCooldownMs())) {
             return Mono.just(new AIResponse(
                     "Aguarde alguns instantes antes de pedir uma dica.",
-                    false, null, resolveId(sessionId)
+                    false, null, resolveId(sessionId), AnswerVerdict.UNKNOWN
             ));
         }
 
         if (session.getHintCount() >= gameProperties.getMaxHintsPerSession()) {
             return Mono.just(new AIResponse(
                     "Limite de dicas atingido para esta sessão. Inicie um novo jogo com POST /api/game/start.",
-                    false, null, resolveId(sessionId)
+                    false, null, resolveId(sessionId), AnswerVerdict.UNKNOWN
             ));
         }
 
@@ -216,7 +218,7 @@ public class GameService {
         if (key == null || key.isBlank()) {
             return Mono.just(new AIResponse(
                     "Config inválida: gemini.api.key não foi carregada (gemini.properties).",
-                    false, null, sessionId
+                    false, null, sessionId, AnswerVerdict.UNKNOWN
             ));
         }
 
@@ -256,18 +258,18 @@ public class GameService {
                 .flatMap(this::extractTextOnlyReactive)
                 .map(hintText -> {
                     finalSession.appendHistory("\nIA (DICA): " + hintText);
-                    return new AIResponse(hintText, false, null, resolvedId);
+                    return new AIResponse(hintText, false, null, resolvedId, AnswerVerdict.UNKNOWN);
                 })
                 .onErrorResume(WebClientResponseException.class, ex -> {
                     String details = ex.getResponseBodyAsString();
                     if (details == null || details.isBlank()) details = ex.getMessage();
                     return Mono.just(new AIResponse(
                             "Erro da API Gemini (" + ex.getStatusCode().value() + "): " + details,
-                            false, null, resolvedId
+                            false, null, resolvedId, AnswerVerdict.UNKNOWN
                     ));
                 })
                 .onErrorResume(Throwable.class, ex ->
-                        Mono.just(new AIResponse("Erro inesperado: " + ex.getMessage(), false, null, resolvedId))
+                        Mono.just(new AIResponse("Erro inesperado: " + ex.getMessage(), false, null, resolvedId, AnswerVerdict.UNKNOWN))
                 );
     }
 
@@ -310,7 +312,7 @@ public class GameService {
                 (List<Map<String, Object>>) response.getOrDefault("candidates", List.of());
 
         if (candidates.isEmpty()) {
-            return Mono.just(new AIResponse("Resposta vazia da IA.", false, null, sessionId));
+            return Mono.just(new AIResponse("Resposta vazia da IA.", false, null, sessionId, AnswerVerdict.UNKNOWN));
         }
 
         Map<String, Object> firstCandidate = candidates.getFirst();
@@ -328,7 +330,8 @@ public class GameService {
 
         boolean won = isWinResponse(text);
         if (!won) {
-            return Mono.just(new AIResponse(text, false, null, sessionId));
+            AnswerVerdict verdict = verdictParser.parse(text);
+            return Mono.just(new AIResponse(text, false, null, sessionId, verdict));
         }
 
         String name = extractName(text);
@@ -344,7 +347,7 @@ public class GameService {
                 .map(imageUrl -> {
                     CharacterData data = new CharacterData(nameOk, workOk, imageUrl);
                     String answerText = "Sim! O personagem é " + nameOk + ".\nObra: " + workOk;
-                    return new AIResponse(answerText, true, data, sessionId);
+                    return new AIResponse(answerText, true, data, sessionId, AnswerVerdict.YES);
                 });
     }
 

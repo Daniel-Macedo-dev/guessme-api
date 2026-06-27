@@ -5,6 +5,7 @@ import com.guessme.guessme.dto.AIResponse;
 import com.guessme.guessme.dto.HintDTO;
 import com.guessme.guessme.dto.QuestionDTO;
 import com.guessme.guessme.dto.StartDTO;
+import com.guessme.guessme.model.AnswerVerdict;
 import com.guessme.guessme.service.GameService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -60,12 +61,12 @@ public class GameController {
     public Mono<AIResponse> askAI(@RequestBody(required = false) QuestionDTO dto) {
         if (dto == null || dto.question() == null || dto.question().isBlank()) {
             String sid = (dto != null) ? dto.sessionId() : null;
-            return Mono.just(new AIResponse("Pergunta inválida ou vazia.", false, null, sid));
+            return Mono.just(new AIResponse("Pergunta inválida ou vazia.", false, null, sid, AnswerVerdict.UNKNOWN));
         }
         if (dto.question().length() > gameProperties.getMaxQuestionLength()) {
             return Mono.just(new AIResponse(
                     "Pergunta muito longa (máximo " + gameProperties.getMaxQuestionLength() + " caracteres).",
-                    false, null, dto.sessionId()
+                    false, null, dto.sessionId(), AnswerVerdict.UNKNOWN
             ));
         }
         return gameService.askAI(dto.question(), dto.sessionId());
