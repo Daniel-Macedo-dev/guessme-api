@@ -260,4 +260,61 @@ class GameControllerTest {
                 .expectBody()
                 .jsonPath("$.answer").isEqualTo("Dica geral.");
     }
+
+    // ── verdict field in HTTP responses ────────────────────────────────────────
+
+    @Test
+    void ask_simResponse_returnsYesVerdictInJson() {
+        AIResponse stub = new AIResponse("Sim", false, null, "sess-abc", AnswerVerdict.YES);
+        when(gameService.askAI("É humano?", "sess-abc")).thenReturn(Mono.just(stub));
+
+        webTestClient.post().uri("/api/game/ask")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"question\":\"É humano?\",\"sessionId\":\"sess-abc\"}")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.verdict").isEqualTo("YES")
+                .jsonPath("$.answer").isEqualTo("Sim");
+    }
+
+    @Test
+    void ask_naoResponse_returnsNoVerdictInJson() {
+        AIResponse stub = new AIResponse("Não", false, null, "sess-abc", AnswerVerdict.NO);
+        when(gameService.askAI("É vilão?", "sess-abc")).thenReturn(Mono.just(stub));
+
+        webTestClient.post().uri("/api/game/ask")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"question\":\"É vilão?\",\"sessionId\":\"sess-abc\"}")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.verdict").isEqualTo("NO");
+    }
+
+    @Test
+    void ask_validationError_returnsUnknownVerdictInJson() {
+        webTestClient.post().uri("/api/game/ask")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"question\":\"\",\"sessionId\":\"sess-abc\"}")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.verdict").isEqualTo("UNKNOWN")
+                .jsonPath("$.success").isEqualTo(false);
+    }
+
+    @Test
+    void hint_returnsUnknownVerdictInJson() {
+        AIResponse stub = new AIResponse("Pista sobre o personagem.", false, null, "sess-abc", AnswerVerdict.UNKNOWN);
+        when(gameService.hint("sess-abc")).thenReturn(Mono.just(stub));
+
+        webTestClient.post().uri("/api/game/hint")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"sessionId\":\"sess-abc\"}")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.verdict").isEqualTo("UNKNOWN");
+    }
 }

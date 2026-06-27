@@ -263,6 +263,108 @@ class GameServiceTest {
         assertEquals("Não", result.answer());
     }
 
+    // --- verdict assertions ---
+
+    @Test
+    void askAI_simResponse_returnsYesVerdict() {
+        AIResponse start = gameService.startGame(null).block();
+        assertNotNull(start);
+        when(geminiConfig.getGeminiApiKey()).thenReturn("fake-key");
+        stubGemini(Mono.just(fakeGeminiResponse("Sim")));
+
+        AIResponse result = gameService.askAI("É humano?", start.sessionId()).block();
+
+        assertNotNull(result);
+        assertEquals(AnswerVerdict.YES, result.verdict(), "Sim response must carry YES verdict");
+    }
+
+    @Test
+    void askAI_naoResponse_returnsNoVerdict() {
+        AIResponse start = gameService.startGame(null).block();
+        assertNotNull(start);
+        when(geminiConfig.getGeminiApiKey()).thenReturn("fake-key");
+        stubGemini(Mono.just(fakeGeminiResponse("Não")));
+
+        AIResponse result = gameService.askAI("É humano?", start.sessionId()).block();
+
+        assertNotNull(result);
+        assertEquals(AnswerVerdict.NO, result.verdict(), "Não response must carry NO verdict");
+    }
+
+    @Test
+    void askAI_talvezResponse_returnsMaybeVerdict() {
+        AIResponse start = gameService.startGame(null).block();
+        assertNotNull(start);
+        when(geminiConfig.getGeminiApiKey()).thenReturn("fake-key");
+        stubGemini(Mono.just(fakeGeminiResponse("Talvez")));
+
+        AIResponse result = gameService.askAI("Tem poderes?", start.sessionId()).block();
+
+        assertNotNull(result);
+        assertEquals(AnswerVerdict.MAYBE, result.verdict(), "Talvez response must carry MAYBE verdict");
+    }
+
+    @Test
+    void askAI_winResponse_returnsYesVerdict() {
+        AIResponse start = gameService.startGame(null).block();
+        assertNotNull(start);
+        when(geminiConfig.getGeminiApiKey()).thenReturn("fake-key");
+        when(imageSearchService.searchImage(anyString())).thenReturn(Mono.just(""));
+        stubGemini(Mono.just(fakeGeminiResponse("Sim! O personagem é Naruto. Obra: Naruto")));
+
+        AIResponse result = gameService.askAI("É o Naruto?", start.sessionId()).block();
+
+        assertNotNull(result);
+        assertTrue(result.success());
+        assertEquals(AnswerVerdict.YES, result.verdict(), "Win response must carry YES verdict");
+    }
+
+    @Test
+    void askAI_ambiguousResponse_returnsUnknownVerdict() {
+        AIResponse start = gameService.startGame(null).block();
+        assertNotNull(start);
+        when(geminiConfig.getGeminiApiKey()).thenReturn("fake-key");
+        stubGemini(Mono.just(fakeGeminiResponse("Provavelmente sim, mas depende.")));
+
+        AIResponse result = gameService.askAI("É humano?", start.sessionId()).block();
+
+        assertNotNull(result);
+        assertEquals(AnswerVerdict.UNKNOWN, result.verdict(), "Ambiguous response must carry UNKNOWN verdict");
+    }
+
+    @Test
+    void askAI_missingKey_returnsUnknownVerdict() {
+        AIResponse start = gameService.startGame(null).block();
+        assertNotNull(start);
+        when(geminiConfig.getGeminiApiKey()).thenReturn("");
+
+        AIResponse result = gameService.askAI("É humano?", start.sessionId()).block();
+
+        assertNotNull(result);
+        assertEquals(AnswerVerdict.UNKNOWN, result.verdict(), "Error path must carry UNKNOWN verdict");
+    }
+
+    @Test
+    void hint_success_returnsUnknownVerdict() {
+        AIResponse start = gameService.startGame(null).block();
+        assertNotNull(start);
+        when(geminiConfig.getGeminiApiKey()).thenReturn("fake-key");
+        stubGemini(Mono.just(fakeGeminiResponse("O personagem possui poderes sobrenaturais.")));
+
+        AIResponse result = gameService.hint(start.sessionId()).block();
+
+        assertNotNull(result);
+        assertEquals(AnswerVerdict.UNKNOWN, result.verdict(), "Hints must always carry UNKNOWN verdict");
+    }
+
+    @Test
+    void startGame_returnsUnknownVerdict() {
+        AIResponse result = gameService.startGame(null).block();
+
+        assertNotNull(result);
+        assertEquals(AnswerVerdict.UNKNOWN, result.verdict(), "Start message must carry UNKNOWN verdict");
+    }
+
     @Test
     void askAI_emptyCandidates_returnsEmptyResponseBehavior() {
         AIResponse start = gameService.startGame(null).block();
