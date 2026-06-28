@@ -24,6 +24,10 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
+      - name: Ensure Maven wrapper is executable
+        working-directory: guessme
+        run: chmod +x ./mvnw
+
       - name: Run tests
         working-directory: guessme
         run: ./mvnw test --no-transfer-progress
