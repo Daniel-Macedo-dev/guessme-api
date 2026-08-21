@@ -113,16 +113,16 @@ public class GameService {
             ));
         }
 
-        if (!session.tryAcquire(gameProperties.getRequestCooldownMs())) {
+        if (session.getQuestionCount() >= gameProperties.getMaxQuestionsPerSession()) {
             return Mono.just(new AIResponse(
-                    "Aguarde alguns instantes antes de fazer outra pergunta.",
+                    "Limite de perguntas atingido para esta sessão. Inicie um novo jogo com POST /api/game/start.",
                     false, null, resolveId(sessionId), AnswerVerdict.UNKNOWN
             ));
         }
 
-        if (session.getQuestionCount() >= gameProperties.getMaxQuestionsPerSession()) {
+        if (!session.tryAcquire(gameProperties.getRequestCooldownMs())) {
             return Mono.just(new AIResponse(
-                    "Limite de perguntas atingido para esta sessão. Inicie um novo jogo com POST /api/game/start.",
+                    "Aguarde alguns instantes antes de fazer outra pergunta.",
                     false, null, resolveId(sessionId), AnswerVerdict.UNKNOWN
             ));
         }
@@ -209,16 +209,16 @@ public class GameService {
             ));
         }
 
-        if (!session.tryAcquire(gameProperties.getRequestCooldownMs())) {
+        if (session.getHintCount() >= gameProperties.getMaxHintsPerSession()) {
             return Mono.just(new AIResponse(
-                    "Aguarde alguns instantes antes de pedir uma dica.",
+                    "Limite de dicas atingido para esta sessão. Inicie um novo jogo com POST /api/game/start.",
                     false, null, resolveId(sessionId), AnswerVerdict.UNKNOWN
             ));
         }
 
-        if (session.getHintCount() >= gameProperties.getMaxHintsPerSession()) {
+        if (!session.tryAcquire(gameProperties.getRequestCooldownMs())) {
             return Mono.just(new AIResponse(
-                    "Limite de dicas atingido para esta sessão. Inicie um novo jogo com POST /api/game/start.",
+                    "Aguarde alguns instantes antes de pedir uma dica.",
                     false, null, resolveId(sessionId), AnswerVerdict.UNKNOWN
             ));
         }

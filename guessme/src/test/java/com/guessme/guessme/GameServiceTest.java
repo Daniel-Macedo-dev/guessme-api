@@ -602,6 +602,26 @@ class GameServiceTest {
         assertEquals(sessionId, blocked.sessionId(), "sessionId must be preserved in limit error");
     }
 
+    @Test
+    void askAI_maxQuestionsTakesPrecedenceOverCooldown() {
+        GameProperties props = new GameProperties();
+        props.setMaxQuestionsPerSession(1);
+        props.setRequestCooldownMs(60_000L);
+        GameService limitedService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props, verdictParser);
+        ReflectionTestUtils.setField(limitedService, "geminiModel", "gemini-2.0-flash-lite");
+
+        AIResponse start = limitedService.startGame(null).block();
+        assertNotNull(start);
+        when(geminiConfig.getGeminiApiKey()).thenReturn("fake-key");
+        stubGemini(Mono.just(fakeGeminiResponse("Não")));
+        limitedService.askAI("primeira", start.sessionId()).block();
+
+        AIResponse blocked = limitedService.askAI("segunda", start.sessionId()).block();
+
+        assertNotNull(blocked);
+        assertTrue(blocked.answer().toLowerCase().contains("limite"));
+    }
+
     // --- max hints per session ---
 
     @Test
@@ -627,6 +647,26 @@ class GameServiceTest {
         assertFalse(result.success());
         assertTrue(result.answer().toLowerCase().contains("limite"),
                 "Should return limit error after max hints reached");
+    }
+
+    @Test
+    void hint_maxHintsTakesPrecedenceOverCooldown() {
+        GameProperties props = new GameProperties();
+        props.setMaxHintsPerSession(1);
+        props.setRequestCooldownMs(60_000L);
+        GameService limitedService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props, verdictParser);
+        ReflectionTestUtils.setField(limitedService, "geminiModel", "gemini-2.0-flash-lite");
+
+        AIResponse start = limitedService.startGame(null).block();
+        assertNotNull(start);
+        when(geminiConfig.getGeminiApiKey()).thenReturn("fake-key");
+        stubGemini(Mono.just(fakeGeminiResponse("Uma pista útil.")));
+        limitedService.hint(start.sessionId()).block();
+
+        AIResponse blocked = limitedService.hint(start.sessionId()).block();
+
+        assertNotNull(blocked);
+        assertTrue(blocked.answer().toLowerCase().contains("limite"));
     }
 
     // --- per-session cooldown ---
