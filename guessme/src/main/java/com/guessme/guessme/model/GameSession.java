@@ -54,12 +54,36 @@ public class GameSession {
         return questionCount.incrementAndGet();
     }
 
+    public boolean tryReserveQuestion(int maxQuestions) {
+        return tryReserve(questionCount, maxQuestions);
+    }
+
+    public void releaseQuestion() {
+        questionCount.updateAndGet(current -> Math.max(0, current - 1));
+    }
+
     public int getHintCount() {
         return hintCount.get();
     }
 
     public int incrementHintCount() {
         return hintCount.incrementAndGet();
+    }
+
+    public boolean tryReserveHint(int maxHints) {
+        return tryReserve(hintCount, maxHints);
+    }
+
+    public void releaseHint() {
+        hintCount.updateAndGet(current -> Math.max(0, current - 1));
+    }
+
+    private boolean tryReserve(AtomicInteger counter, int maximum) {
+        while (true) {
+            int current = counter.get();
+            if (current >= maximum) return false;
+            if (counter.compareAndSet(current, current + 1)) return true;
+        }
     }
 
     /**

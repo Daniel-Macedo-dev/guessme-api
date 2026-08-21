@@ -4,6 +4,7 @@ import com.guessme.guessme.model.GameSession;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -128,6 +129,30 @@ class GameSessionTest {
         assertEquals(3, session.getQuestionCount());
     }
 
+    @Test
+    void questionReservations_neverExceedLimitUnderConcurrency() {
+        GameSession session = new GameSession();
+
+        long accepted = IntStream.range(0, 100).parallel()
+                .filter(ignored -> session.tryReserveQuestion(7))
+                .count();
+
+        assertEquals(7, accepted);
+        assertEquals(7, session.getQuestionCount());
+    }
+
+    @Test
+    void releaseQuestion_returnsReservedCapacityWithoutGoingNegative() {
+        GameSession session = new GameSession();
+        assertTrue(session.tryReserveQuestion(1));
+
+        session.releaseQuestion();
+        session.releaseQuestion();
+
+        assertEquals(0, session.getQuestionCount());
+        assertTrue(session.tryReserveQuestion(1));
+    }
+
     // ── hintCount ─────────────────────────────────────────────────────────
 
     @Test
@@ -147,6 +172,18 @@ class GameSessionTest {
         assertEquals(1, first);
         assertEquals(2, second);
         assertEquals(2, session.getHintCount());
+    }
+
+    @Test
+    void hintReservations_neverExceedLimitUnderConcurrency() {
+        GameSession session = new GameSession();
+
+        long accepted = IntStream.range(0, 100).parallel()
+                .filter(ignored -> session.tryReserveHint(5))
+                .count();
+
+        assertEquals(5, accepted);
+        assertEquals(5, session.getHintCount());
     }
 
     // ── tryAcquire (cooldown gate) ─────────────────────────────────────────
