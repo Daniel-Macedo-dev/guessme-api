@@ -718,6 +718,26 @@ class GameServiceTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void eviction_freshSessionsNeverExceedConfiguredCapacity() {
+        GameProperties props = new GameProperties();
+        props.setMaxSessions(3);
+        GameService limitedService = new GameService(
+                geminiConfig, geminiWebClient, imageSearchService, props, verdictParser
+        );
+        ReflectionTestUtils.setField(limitedService, "geminiModel", "gemini-2.0-flash-lite");
+
+        for (int i = 0; i < 5; i++) {
+            limitedService.startGame("Anime").block();
+        }
+
+        ConcurrentHashMap<String, GameSession> sessions =
+                (ConcurrentHashMap<String, GameSession>) ReflectionTestUtils.getField(limitedService, "sessions");
+        assertNotNull(sessions);
+        assertEquals(3, sessions.size());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void eviction_freshSessionsSurviveEviction() {
         ConcurrentHashMap<String, GameSession> sessions =
                 (ConcurrentHashMap<String, GameSession>) ReflectionTestUtils.getField(gameService, "sessions");

@@ -18,6 +18,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.Comparator;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
@@ -294,12 +295,22 @@ public class GameService {
     }
 
     private void evictIfNeeded() {
-        if (sessions.size() < gameProperties.getMaxSessions()) return;
+        int maxSessions = Math.max(1, gameProperties.getMaxSessions());
+        if (sessions.size() < maxSessions) return;
+
         Instant cutoff = Instant.now().minus(gameProperties.getSessionTtlMinutes(), ChronoUnit.MINUTES);
         sessions.entrySet().removeIf(e ->
                 !e.getKey().equals(DEFAULT_SESSION_ID)
                         && e.getValue().getLastAccess().isBefore(cutoff)
         );
+
+        while (sessions.size() >= maxSessions) {
+            var oldest = sessions.entrySet().stream()
+                    .min(Comparator.comparing(e -> e.getValue().getLastAccess()));
+            if (oldest.isEmpty() || !sessions.remove(oldest.get().getKey(), oldest.get().getValue())) {
+                break;
+            }
+        }
     }
 
     // ===== EXTRACTORS =====
