@@ -493,6 +493,20 @@ class GameServiceTest {
         assertEquals(0, sessions.get(start.sessionId()).getHintCount());
     }
 
+    @Test
+    void askAI_wrongProviderShape_returnsStableErrorWithoutImplementationDetails() {
+        AIResponse start = gameService.startGame(null).block();
+        assertNotNull(start);
+        when(geminiConfig.getGeminiApiKey()).thenReturn("fake-key");
+        stubGemini(Mono.just(Map.of("candidates", "wrong-type")));
+
+        AIResponse result = gameService.askAI("É humano?", start.sessionId()).block();
+
+        assertNotNull(result);
+        assertEquals("Erro inesperado ao processar a resposta da IA.", result.answer());
+        assertFalse(result.answer().contains("ClassCastException"));
+    }
+
     // --- test helpers ---
 
     private static Map<String, Object> fakeGeminiResponse(String text) {

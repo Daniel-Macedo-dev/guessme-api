@@ -187,16 +187,14 @@ public class GameService {
                 })
                 .onErrorResume(WebClientResponseException.class, ex -> {
                     finalSession.releaseQuestion();
-                    String details = ex.getResponseBodyAsString();
-                    if (details == null || details.isBlank()) details = ex.getMessage();
                     return Mono.just(new AIResponse(
-                            "Erro da API Gemini (" + ex.getStatusCode().value() + "): " + details,
+                            "Erro da API Gemini (" + ex.getStatusCode().value() + "): não foi possível concluir a solicitação.",
                             false, null, resolvedId, AnswerVerdict.UNKNOWN
                     ));
                 })
                 .onErrorResume(Throwable.class, ex -> {
                     finalSession.releaseQuestion();
-                    return Mono.just(new AIResponse("Erro inesperado: " + ex.getMessage(), false, null, resolvedId, AnswerVerdict.UNKNOWN));
+                    return Mono.just(new AIResponse("Erro inesperado ao processar a resposta da IA.", false, null, resolvedId, AnswerVerdict.UNKNOWN));
                 });
     }
 
@@ -288,16 +286,14 @@ public class GameService {
                 })
                 .onErrorResume(WebClientResponseException.class, ex -> {
                     finalSession.releaseHint();
-                    String details = ex.getResponseBodyAsString();
-                    if (details == null || details.isBlank()) details = ex.getMessage();
                     return Mono.just(new AIResponse(
-                            "Erro da API Gemini (" + ex.getStatusCode().value() + "): " + details,
+                            "Erro da API Gemini (" + ex.getStatusCode().value() + "): não foi possível concluir a solicitação.",
                             false, null, resolvedId, AnswerVerdict.UNKNOWN
                     ));
                 })
                 .onErrorResume(Throwable.class, ex -> {
                     finalSession.releaseHint();
-                    return Mono.just(new AIResponse("Erro inesperado: " + ex.getMessage(), false, null, resolvedId, AnswerVerdict.UNKNOWN));
+                    return Mono.just(new AIResponse("Erro inesperado ao processar a resposta da IA.", false, null, resolvedId, AnswerVerdict.UNKNOWN));
                 });
     }
 
