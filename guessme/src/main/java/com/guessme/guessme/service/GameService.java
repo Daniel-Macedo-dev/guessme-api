@@ -113,7 +113,8 @@ public class GameService {
             ));
         }
 
-        if (session.getQuestionCount() >= gameProperties.getMaxQuestionsPerSession()) {
+        int maxQuestions = gameProperties.getMaxQuestionsPerSession();
+        if (session.getQuestionCount() >= maxQuestions) {
             return Mono.just(new AIResponse(
                     "Limite de perguntas atingido para esta sessão. Inicie um novo jogo com POST /api/game/start.",
                     false, null, resolveId(sessionId), AnswerVerdict.UNKNOWN
@@ -127,9 +128,12 @@ public class GameService {
             ));
         }
 
-        session.incrementQuestionCount();
-
-        session.appendHistory("\nUsuário: " + normalizedQuestion);
+        if (!session.tryReserveQuestion(maxQuestions)) {
+            return Mono.just(new AIResponse(
+                    "Limite de perguntas atingido para esta sessão. Inicie um novo jogo com POST /api/game/start.",
+                    false, null, resolveId(sessionId), AnswerVerdict.UNKNOWN
+            ));
+        }
 
         String categoryRule = """
                 Regras de universo/categoria:
@@ -155,6 +159,7 @@ public class GameService {
                 Histórico:
                 """.formatted(categoryRule)
                         + session.getConversationHistory()
+                        + "\nUsuário: " + normalizedQuestion
                         + "\nAgora responda seguindo as regras.";
 
         Map<String, Object> body = Map.of(
@@ -173,8 +178,15 @@ public class GameService {
                 .bodyValue(body)
                 .retrieve()
                 .bodyToMono(MAP_TYPE)
-                .flatMap(responseMap -> extractAIResponseReactive(responseMap, finalSession, resolvedId))
+                .flatMap(responseMap -> extractAIResponseReactive(responseMap, finalSession, resolvedId, normalizedQuestion))
+                .doOnNext(response -> {
+                    if (response.answer().startsWith("Resposta vazia")
+                            || response.answer().startsWith("Resposta inválida")) {
+                        finalSession.releaseQuestion();
+                    }
+                })
                 .onErrorResume(WebClientResponseException.class, ex -> {
+                    finalSession.releaseQuestion();
                     String details = ex.getResponseBodyAsString();
                     if (details == null || details.isBlank()) details = ex.getMessage();
                     return Mono.just(new AIResponse(
@@ -182,9 +194,10 @@ public class GameService {
                             false, null, resolvedId, AnswerVerdict.UNKNOWN
                     ));
                 })
-                .onErrorResume(Throwable.class, ex ->
-                        Mono.just(new AIResponse("Erro inesperado: " + ex.getMessage(), false, null, resolvedId, AnswerVerdict.UNKNOWN))
-                );
+                .onErrorResume(Throwable.class, ex -> {
+                    finalSession.releaseQuestion();
+                    return Mono.just(new AIResponse("Erro inesperado: " + ex.getMessage(), false, null, resolvedId, AnswerVerdict.UNKNOWN));
+                });
     }
 
     // Backward-compatible no-arg variant; routes to the default session.
@@ -209,7 +222,8 @@ public class GameService {
             ));
         }
 
-        if (session.getHintCount() >= gameProperties.getMaxHintsPerSession()) {
+        int maxHints = gameProperties.getMaxHintsPerSession();
+        if (session.getHintCount() >= maxHints) {
             return Mono.just(new AIResponse(
                     "Limite de dicas atingido para esta sessão. Inicie um novo jogo com POST /api/game/start.",
                     false, null, resolveId(sessionId), AnswerVerdict.UNKNOWN
@@ -223,7 +237,12 @@ public class GameService {
             ));
         }
 
-        session.incrementHintCount();
+        if (!session.tryReserveHint(maxHints)) {
+            return Mono.just(new AIResponse(
+                    "Limite de dicas atingido para esta sessão. Inicie um novo jogo com POST /api/game/start.",
+                    false, null, resolveId(sessionId), AnswerVerdict.UNKNOWN
+            ));
+        }
 
         String prompt =
                 """
@@ -260,10 +279,15 @@ public class GameService {
                 .bodyToMono(MAP_TYPE)
                 .flatMap(this::extractTextOnlyReactive)
                 .map(hintText -> {
-                    finalSession.appendHistory("\nIA (DICA): " + hintText);
+                    if (hintText.startsWith("Não consegui gerar")) {
+                        finalSession.releaseHint();
+                    } else {
+                        finalSession.appendHistory("\nIA (DICA): " + hintText);
+                    }
                     return new AIResponse(hintText, false, null, resolvedId, AnswerVerdict.UNKNOWN);
                 })
                 .onErrorResume(WebClientResponseException.class, ex -> {
+                    finalSession.releaseHint();
                     String details = ex.getResponseBodyAsString();
                     if (details == null || details.isBlank()) details = ex.getMessage();
                     return Mono.just(new AIResponse(
@@ -271,9 +295,10 @@ public class GameService {
                             false, null, resolvedId, AnswerVerdict.UNKNOWN
                     ));
                 })
-                .onErrorResume(Throwable.class, ex ->
-                        Mono.just(new AIResponse("Erro inesperado: " + ex.getMessage(), false, null, resolvedId, AnswerVerdict.UNKNOWN))
-                );
+                .onErrorResume(Throwable.class, ex -> {
+                    finalSession.releaseHint();
+                    return Mono.just(new AIResponse("Erro inesperado: " + ex.getMessage(), false, null, resolvedId, AnswerVerdict.UNKNOWN));
+                });
     }
 
     // ===== HELPERS =====
@@ -328,7 +353,7 @@ public class GameService {
 
     @SuppressWarnings("unchecked")
     private Mono<AIResponse> extractAIResponseReactive(
-            Map<String, Object> response, GameSession session, String sessionId) {
+            Map<String, Object> response, GameSession session, String sessionId, String question) {
 
         List<Map<String, Object>> candidates =
                 (List<Map<String, Object>>) response.getOrDefault("candidates", List.of());
@@ -344,10 +369,16 @@ public class GameService {
         List<Map<String, Object>> parts =
                 (List<Map<String, Object>>) content.getOrDefault("parts", List.of());
 
-        String text = parts.isEmpty()
-                ? "Resposta inválida da IA."
-                : String.valueOf(parts.getFirst().getOrDefault("text", "")).trim();
+        if (parts.isEmpty()) {
+            return Mono.just(new AIResponse("Resposta inválida da IA.", false, null, sessionId, AnswerVerdict.UNKNOWN));
+        }
 
+        String text = String.valueOf(parts.getFirst().getOrDefault("text", "")).trim();
+        if (text.isBlank()) {
+            return Mono.just(new AIResponse("Resposta inválida da IA.", false, null, sessionId, AnswerVerdict.UNKNOWN));
+        }
+
+        session.appendHistory("\nUsuário: " + question);
         session.appendHistory("\nIA: " + text);
 
         boolean won = isWinResponse(text);

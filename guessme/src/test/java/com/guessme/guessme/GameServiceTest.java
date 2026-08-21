@@ -441,6 +441,58 @@ class GameServiceTest {
         assertNull(result.character());
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    void askAI_invalidProviderResponse_releasesQuotaAndDoesNotPolluteHistory() {
+        GameProperties props = new GameProperties();
+        props.setMaxQuestionsPerSession(1);
+        props.setRequestCooldownMs(0);
+        GameService limitedService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props, verdictParser);
+        ReflectionTestUtils.setField(limitedService, "geminiModel", "gemini-2.0-flash-lite");
+        AIResponse start = limitedService.startGame(null).block();
+        assertNotNull(start);
+        when(geminiConfig.getGeminiApiKey()).thenReturn("fake-key");
+        stubGemini(Mono.just(Map.of("candidates", List.of())));
+
+        AIResponse first = limitedService.askAI("pergunta sem resposta", start.sessionId()).block();
+        AIResponse second = limitedService.askAI("tentativa seguinte", start.sessionId()).block();
+
+        assertNotNull(first);
+        assertNotNull(second);
+        assertFalse(second.answer().toLowerCase().contains("limite"));
+        ConcurrentHashMap<String, GameSession> sessions =
+                (ConcurrentHashMap<String, GameSession>) ReflectionTestUtils.getField(limitedService, "sessions");
+        assertNotNull(sessions);
+        GameSession session = sessions.get(start.sessionId());
+        assertEquals(0, session.getQuestionCount());
+        assertFalse(session.getConversationHistory().contains("pergunta sem resposta"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void hint_providerFailure_releasesQuota() {
+        GameProperties props = new GameProperties();
+        props.setMaxHintsPerSession(1);
+        props.setRequestCooldownMs(0);
+        GameService limitedService = new GameService(geminiConfig, geminiWebClient, imageSearchService, props, verdictParser);
+        ReflectionTestUtils.setField(limitedService, "geminiModel", "gemini-2.0-flash-lite");
+        AIResponse start = limitedService.startGame(null).block();
+        assertNotNull(start);
+        when(geminiConfig.getGeminiApiKey()).thenReturn("fake-key");
+        stubGemini(Mono.just(Map.of("candidates", List.of())));
+
+        AIResponse first = limitedService.hint(start.sessionId()).block();
+        AIResponse second = limitedService.hint(start.sessionId()).block();
+
+        assertNotNull(first);
+        assertNotNull(second);
+        assertFalse(second.answer().toLowerCase().contains("limite"));
+        ConcurrentHashMap<String, GameSession> sessions =
+                (ConcurrentHashMap<String, GameSession>) ReflectionTestUtils.getField(limitedService, "sessions");
+        assertNotNull(sessions);
+        assertEquals(0, sessions.get(start.sessionId()).getHintCount());
+    }
+
     // --- test helpers ---
 
     private static Map<String, Object> fakeGeminiResponse(String text) {
