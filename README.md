@@ -49,6 +49,7 @@ A aplicação foi organizada em camadas simples para separar responsabilidades e
 
 - Início de partida com categoria opcional
 - Suporte a categorias como **Geral**, **Anime**, **Games**, **Filmes**, **Séries** e **Quadrinhos**
+- Categorias são normalizadas contra essa lista; valores desconhecidos usam **Geral** e nunca são interpolados no prompt
 - Envio de perguntas para a IA
 - Respostas curtas e consistentes durante a partida
 - Geração de dicas contextuais
@@ -351,7 +352,7 @@ Todas as propriedades abaixo são controladas pelo prefixo `game.*` em `applicat
 | Propriedade | Padrão | Descrição |
 |---|---|---|
 | `game.max-question-length` | `300` | Tamanho máximo de uma pergunta (caracteres) |
-| `game.max-sessions` | `200` | Número máximo de sessões mantidas em memória |
+| `game.max-sessions` | `200` | Limite rígido de sessões em memória; ao atingir a capacidade, sessões expiradas e depois as menos recentes são removidas |
 | `game.session-ttl-minutes` | `60` | Tempo sem atividade (minutos) antes de uma sessão ser elegível para evicção |
 | `game.max-questions-per-session` | `50` | Limite de perguntas por sessão |
 | `game.max-hints-per-session` | `10` | Limite de dicas por sessão |
@@ -360,6 +361,8 @@ Todas as propriedades abaixo são controladas pelo prefixo `game.*` em `applicat
 ### Erros de limite retornados
 
 Quando um limite é atingido, a API retorna HTTP 200 com `"success": false` e uma mensagem descritiva:
+
+Falhas de configuração detectadas antes de chamar o Gemini não consomem cooldown nem a cota de perguntas ou dicas da sessão.
 
 | Situação | Mensagem retornada |
 |---|---|
