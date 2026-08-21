@@ -23,6 +23,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -852,6 +853,25 @@ class GameServiceTest {
         for (int i = 0; i < 5; i++) {
             limitedService.startGame("Anime").block();
         }
+
+        ConcurrentHashMap<String, GameSession> sessions =
+                (ConcurrentHashMap<String, GameSession>) ReflectionTestUtils.getField(limitedService, "sessions");
+        assertNotNull(sessions);
+        assertEquals(3, sessions.size());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void concurrentStartsNeverExceedConfiguredCapacity() {
+        GameProperties props = new GameProperties();
+        props.setMaxSessions(3);
+        GameService limitedService = new GameService(
+                geminiConfig, geminiWebClient, imageSearchService, props, verdictParser
+        );
+        ReflectionTestUtils.setField(limitedService, "geminiModel", "gemini-2.0-flash-lite");
+
+        IntStream.range(0, 100).parallel()
+                .forEach(i -> limitedService.startGame("Anime").block());
 
         ConcurrentHashMap<String, GameSession> sessions =
                 (ConcurrentHashMap<String, GameSession>) ReflectionTestUtils.getField(limitedService, "sessions");

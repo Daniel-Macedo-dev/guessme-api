@@ -51,6 +51,7 @@ public class GameService {
     private String geminiModel;
 
     private final ConcurrentHashMap<String, GameSession> sessions = new ConcurrentHashMap<>();
+    private final Object sessionCreationLock = new Object();
 
     public List<String> getCategories() {
         return CATEGORIES;
@@ -74,8 +75,10 @@ public class GameService {
         session.appendHistory("\n[SISTEMA] Categoria: " + categoryName);
         session.appendHistory("\nIA: " + text);
 
-        evictIfNeeded();
-        sessions.put(sessionId, session);
+        synchronized (sessionCreationLock) {
+            evictIfNeeded();
+            sessions.put(sessionId, session);
+        }
 
         return Mono.just(new AIResponse(text, false, null, sessionId, AnswerVerdict.UNKNOWN));
     }
