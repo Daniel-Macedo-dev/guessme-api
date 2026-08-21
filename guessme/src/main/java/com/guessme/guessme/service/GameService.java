@@ -16,9 +16,9 @@ import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Comparator;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
@@ -27,6 +27,9 @@ import java.util.regex.Pattern;
 @Service
 @RequiredArgsConstructor
 public class GameService {
+
+    private static final List<String> CATEGORIES =
+            List.of("Geral", "Anime", "Games", "Filmes", "Séries", "Quadrinhos");
 
     private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
             new ParameterizedTypeReference<>() {};
@@ -50,7 +53,7 @@ public class GameService {
     private final ConcurrentHashMap<String, GameSession> sessions = new ConcurrentHashMap<>();
 
     public List<String> getCategories() {
-        return List.of("Geral", "Anime", "Games", "Filmes", "Séries", "Quadrinhos");
+        return CATEGORIES;
     }
 
     // Backward-compatible no-arg variant kept for existing callers.
@@ -61,9 +64,7 @@ public class GameService {
     public Mono<AIResponse> startGame(String category) {
         String sessionId = UUID.randomUUID().toString();
         GameSession session = new GameSession();
-        session.setCurrentCategory(
-                (category == null || category.isBlank()) ? "Geral" : category.trim()
-        );
+        session.setCurrentCategory(normalizeCategory(category));
 
         String categoryName = session.getCurrentCategory();
         String text = "Ok! Já escolhi um personagem"
@@ -311,6 +312,15 @@ public class GameService {
                 break;
             }
         }
+    }
+
+    private String normalizeCategory(String category) {
+        if (category == null || category.isBlank()) return "Geral";
+        String requested = category.trim();
+        return CATEGORIES.stream()
+                .filter(candidate -> candidate.equalsIgnoreCase(requested))
+                .findFirst()
+                .orElse("Geral");
     }
 
     // ===== EXTRACTORS =====
