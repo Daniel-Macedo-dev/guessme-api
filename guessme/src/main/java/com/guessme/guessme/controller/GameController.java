@@ -63,13 +63,14 @@ public class GameController {
             String sid = (dto != null) ? dto.sessionId() : null;
             return Mono.just(new AIResponse("Pergunta inválida ou vazia.", false, null, sid, AnswerVerdict.UNKNOWN));
         }
-        if (dto.question().length() > gameProperties.getMaxQuestionLength()) {
+        String question = dto.question().trim();
+        if (question.length() > gameProperties.getMaxQuestionLength()) {
             return Mono.just(new AIResponse(
                     "Pergunta muito longa (máximo " + gameProperties.getMaxQuestionLength() + " caracteres).",
                     false, null, dto.sessionId(), AnswerVerdict.UNKNOWN
             ));
         }
-        return gameService.askAI(dto.question(), dto.sessionId());
+        return gameService.askAI(question, dto.sessionId());
     }
 
     @PostMapping("/hint")

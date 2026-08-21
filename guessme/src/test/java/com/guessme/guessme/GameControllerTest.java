@@ -210,6 +210,20 @@ class GameControllerTest {
     }
 
     @Test
+    void ask_questionWithSurroundingWhitespace_delegatesTrimmedValue() {
+        AIResponse stub = new AIResponse("Sim", false, null, "sess-abc", AnswerVerdict.YES);
+        when(gameService.askAI("É humano?", "sess-abc")).thenReturn(Mono.just(stub));
+
+        webTestClient.post().uri("/api/game/ask")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"question\":\"  É humano?  \",\"sessionId\":\"sess-abc\"}")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.answer").isEqualTo("Sim");
+    }
+
+    @Test
     void ask_winResponse_returnsCharacterData() {
         CharacterData character = new CharacterData(
                 "Naruto Uzumaki", "Naruto", "https://img.example.com/naruto.jpg");

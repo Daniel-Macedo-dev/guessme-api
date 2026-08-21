@@ -89,7 +89,8 @@ public class GameService {
         if (question == null || question.isBlank()) {
             return Mono.just(new AIResponse("Pergunta inválida ou vazia.", false, null, sessionId, AnswerVerdict.UNKNOWN));
         }
-        if (question.length() > gameProperties.getMaxQuestionLength()) {
+        String normalizedQuestion = question.trim();
+        if (normalizedQuestion.length() > gameProperties.getMaxQuestionLength()) {
             return Mono.just(new AIResponse(
                     "Pergunta muito longa (máximo " + gameProperties.getMaxQuestionLength() + " caracteres).",
                     false, null, sessionId, AnswerVerdict.UNKNOWN
@@ -128,7 +129,7 @@ public class GameService {
 
         session.incrementQuestionCount();
 
-        session.appendHistory("\nUsuário: " + question);
+        session.appendHistory("\nUsuário: " + normalizedQuestion);
 
         String categoryRule = """
                 Regras de universo/categoria:
