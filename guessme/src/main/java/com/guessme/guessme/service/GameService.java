@@ -102,6 +102,14 @@ public class GameService {
             ));
         }
 
+        String key = geminiConfig.getGeminiApiKey();
+        if (key == null || key.isBlank()) {
+            return Mono.just(new AIResponse(
+                    "Config inválida: gemini.api.key não foi carregada (gemini.properties).",
+                    false, null, sessionId, AnswerVerdict.UNKNOWN
+            ));
+        }
+
         if (!session.tryAcquire(gameProperties.getRequestCooldownMs())) {
             return Mono.just(new AIResponse(
                     "Aguarde alguns instantes antes de fazer outra pergunta.",
@@ -117,14 +125,6 @@ public class GameService {
         }
 
         session.incrementQuestionCount();
-
-        String key = geminiConfig.getGeminiApiKey();
-        if (key == null || key.isBlank()) {
-            return Mono.just(new AIResponse(
-                    "Config inválida: gemini.api.key não foi carregada (gemini.properties).",
-                    false, null, sessionId, AnswerVerdict.UNKNOWN
-            ));
-        }
 
         session.appendHistory("\nUsuário: " + question);
 
@@ -198,6 +198,14 @@ public class GameService {
             ));
         }
 
+        String key = geminiConfig.getGeminiApiKey();
+        if (key == null || key.isBlank()) {
+            return Mono.just(new AIResponse(
+                    "Config inválida: gemini.api.key não foi carregada (gemini.properties).",
+                    false, null, sessionId, AnswerVerdict.UNKNOWN
+            ));
+        }
+
         if (!session.tryAcquire(gameProperties.getRequestCooldownMs())) {
             return Mono.just(new AIResponse(
                     "Aguarde alguns instantes antes de pedir uma dica.",
@@ -213,14 +221,6 @@ public class GameService {
         }
 
         session.incrementHintCount();
-
-        String key = geminiConfig.getGeminiApiKey();
-        if (key == null || key.isBlank()) {
-            return Mono.just(new AIResponse(
-                    "Config inválida: gemini.api.key não foi carregada (gemini.properties).",
-                    false, null, sessionId, AnswerVerdict.UNKNOWN
-            ));
-        }
 
         String prompt =
                 """

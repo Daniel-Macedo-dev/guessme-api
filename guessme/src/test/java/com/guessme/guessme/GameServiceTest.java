@@ -157,6 +157,21 @@ class GameServiceTest {
     }
 
     @Test
+    void askAI_missingGeminiKey_doesNotConsumeQuestionQuota() {
+        AIResponse start = gameService.startGame(null).block();
+        assertNotNull(start);
+        when(geminiConfig.getGeminiApiKey()).thenReturn("");
+
+        AIResponse result = null;
+        for (int i = 0; i < 51; i++) {
+            result = gameService.askAI("É humano?", start.sessionId()).block();
+        }
+
+        assertNotNull(result);
+        assertTrue(result.answer().contains("gemini.api.key"));
+    }
+
+    @Test
     void hint_missingGeminiKey_returnsConfigError() {
         AIResponse start = gameService.startGame(null).block();
         assertNotNull(start);
@@ -167,6 +182,21 @@ class GameServiceTest {
 
         assertNotNull(result);
         assertFalse(result.success());
+        assertTrue(result.answer().contains("gemini.api.key"));
+    }
+
+    @Test
+    void hint_missingGeminiKey_doesNotConsumeHintQuota() {
+        AIResponse start = gameService.startGame(null).block();
+        assertNotNull(start);
+        when(geminiConfig.getGeminiApiKey()).thenReturn("");
+
+        AIResponse result = null;
+        for (int i = 0; i < 11; i++) {
+            result = gameService.hint(start.sessionId()).block();
+        }
+
+        assertNotNull(result);
         assertTrue(result.answer().contains("gemini.api.key"));
     }
 
@@ -516,7 +546,8 @@ class GameServiceTest {
         assertNotNull(start);
         String sessionId = start.sessionId();
 
-        when(geminiConfig.getGeminiApiKey()).thenReturn("");
+        when(geminiConfig.getGeminiApiKey()).thenReturn("fake-key");
+        stubGemini(Mono.just(fakeGeminiResponse("Não")));
         // Consume all 3 allowed questions
         for (int i = 0; i < 3; i++) {
             limitedService.askAI("question " + i, sessionId).block();
@@ -542,7 +573,8 @@ class GameServiceTest {
         assertNotNull(start);
         String sessionId = start.sessionId();
 
-        when(geminiConfig.getGeminiApiKey()).thenReturn("");
+        when(geminiConfig.getGeminiApiKey()).thenReturn("fake-key");
+        stubGemini(Mono.just(fakeGeminiResponse("Não")));
         limitedService.askAI("q1", sessionId).block();
         limitedService.askAI("q2", sessionId).block();
 
@@ -567,7 +599,8 @@ class GameServiceTest {
         assertNotNull(start);
         String sessionId = start.sessionId();
 
-        when(geminiConfig.getGeminiApiKey()).thenReturn("");
+        when(geminiConfig.getGeminiApiKey()).thenReturn("fake-key");
+        stubGemini(Mono.just(fakeGeminiResponse("Uma pista útil.")));
         limitedService.hint(sessionId).block();
         limitedService.hint(sessionId).block();
 
@@ -593,13 +626,13 @@ class GameServiceTest {
         assertNotNull(start);
         String sessionId = start.sessionId();
 
-        when(geminiConfig.getGeminiApiKey()).thenReturn("");
+        when(geminiConfig.getGeminiApiKey()).thenReturn("fake-key");
+        stubGemini(Mono.just(fakeGeminiResponse("Não")));
 
-        // First call: passes cooldown (lastRequestAt was null) → reaches key check
+        // First call succeeds and consumes the cooldown slot.
         AIResponse first = throttledService.askAI("É humano?", sessionId).block();
         assertNotNull(first);
-        assertTrue(first.answer().contains("gemini.api.key"),
-                "First call should reach key check, not be throttled");
+        assertEquals("Não", first.answer());
 
         // Second call immediately: cooldown still active
         AIResponse second = throttledService.askAI("É humano?", sessionId).block();
@@ -621,12 +654,12 @@ class GameServiceTest {
         assertNotNull(start);
         String sessionId = start.sessionId();
 
-        when(geminiConfig.getGeminiApiKey()).thenReturn("");
+        when(geminiConfig.getGeminiApiKey()).thenReturn("fake-key");
+        stubGemini(Mono.just(fakeGeminiResponse("Uma pista útil.")));
 
         AIResponse first = throttledService.hint(sessionId).block();
         assertNotNull(first);
-        assertTrue(first.answer().contains("gemini.api.key"),
-                "First hint should reach key check, not be throttled");
+        assertEquals("Uma pista útil.", first.answer());
 
         AIResponse second = throttledService.hint(sessionId).block();
         assertNotNull(second);
@@ -648,7 +681,8 @@ class GameServiceTest {
         assertNotNull(start);
         String sessionId = start.sessionId();
 
-        when(geminiConfig.getGeminiApiKey()).thenReturn("");
+        when(geminiConfig.getGeminiApiKey()).thenReturn("fake-key");
+        stubGemini(Mono.just(fakeGeminiResponse("Não")));
 
         // Ask consumes the cooldown slot
         throttledService.askAI("É humano?", sessionId).block();
